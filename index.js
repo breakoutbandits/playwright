@@ -23,7 +23,12 @@ app.post('/run', async (req, res) => {
     password: data.password || 'Bandits2022!',
   };
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: '/opt/render/.cache/ms-playwright/chromium-1179/chrome-linux/chrome',
+    args: ['--no-sandbox']
+  });
+
   const context = await browser.newContext();
   const page = await context.newPage();
 

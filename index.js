@@ -1,6 +1,7 @@
 const express = require('express');
-const { chromium } = require('playwright');
-const fs = require('fs');
+const { chromium } = require('playwright'); // Gebruik Playwright
+
+console.log('🟢 Server initialiseren...');
 
 const app = express();
 app.use(express.json());
@@ -11,7 +12,7 @@ app.use('/run', (req, res, next) => {
   console.log('🔐 API-key check wordt uitgevoerd');
   const incomingKey = req.headers['x-api-key'];
   if (incomingKey !== API_KEY) {
-    console.warn('⛔ Ongeldige API-key ontvangen:', incomingKey);
+    console.warn('🚫 Ongeldige API-key');
     return res.status(403).json({ success: false, message: 'Forbidden: Invalid API key' });
   }
   console.log('✅ API-key geldig');
@@ -20,79 +21,72 @@ app.use('/run', (req, res, next) => {
 
 app.post('/run', async (req, res) => {
   console.log('🚀 /run endpoint aangeroepen');
-  console.log('📦 Ontvangen body:', req.body);
+
+  const data = req.body;
+  console.log('📦 Ontvangen body:', data);
 
   const formData = {
-    username: req.body.username || 'support@breakoutbandits.com',
-    password: req.body.password || 'Bandits2022!',
+    username: data.username || 'support@breakoutbandits.com',
+    password: data.password || 'Bandits2022!',
   };
 
-  const browserPath = '/opt/render/.cache/ms-playwright/chromium-1179/chrome-linux/chrome';
-  const browserExists = fs.existsSync(browserPath);
-
-  if (!browserExists) {
-    console.error('❌ Chromium niet gevonden op pad:', browserPath);
-    return res.status(500).json({ success: false, message: 'Chromium executable ontbreekt' });
-  } else {
-    console.log('✅ Chromium gevonden op pad:', browserPath);
-  }
+  console.log('🧠 Inloggegevens voorbereid. Browser wordt gestart...');
 
   let browser;
   try {
-    console.log('🧪 Chromium wordt gestart...');
     browser = await chromium.launch({
       headless: true,
-      executablePath: browserPath,
-      args: ['--no-sandbox']
+      args: ['--no-sandbox'],
     });
-    console.log('🟢 Chromium succesvol gestart');
-  } catch (launchErr) {
-    console.error('🔥 Fout bij starten van Chromium:', launchErr);
-    return res.status(500).json({ success: false, error: launchErr.toString() });
-  }
+    console.log('🌐 Chromium succesvol gestart');
 
-  const context = await browser.newContext();
-  const page = await context.newPage();
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
-  try {
     console.log('🌍 Navigeren naar inlogpagina...');
     await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
 
-    // Vul email en wachtwoord in
+    console.log('✍️ Inloggegevens invullen...');
     await page.fill('input[placeholder*="email" i]', formData.username);
     await page.fill('input[placeholder*="password" i]', formData.password);
 
-    console.log('🔑 Loginformulier ingevuld. Proberen in te loggen...');
-
+    console.log('🔓 Inloggen...');
     await Promise.all([
       page.click('button[type="submit"]'),
-      page.waitForNavigation({ waitUntil: 'networkidle' })
+      page.waitForNavigation({ waitUntil: 'networkidle' }),
     ]);
 
     const pageUrl = page.url();
     console.log('🌐 Huidige URL na login:', pageUrl);
 
     if (pageUrl.includes('/dashboard') || !pageUrl.includes('/login')) {
-      console.log('✅ Login succesvol');
+      console.log('✅ Inloggen gelukt');
       res.json({ success: true, message: '✅ Succesvol ingelogd op Loquiz' });
     } else {
-      console.warn('⚠️ Login lijkt mislukt');
+      console.warn('❌ Login mislukt');
       res.status(401).json({ success: false, message: '❌ Login mislukt' });
     }
 
   } catch (err) {
     console.error('❌ Fout tijdens loginproces:', err);
     res.status(500).json({ success: false, error: err.toString() });
+
   } finally {
-    await browser.close();
-    console.log('🧹 Browser gesloten');
+    if (browser) {
+      await browser.close();
+      console.log('🧹 Browser gesloten');
+    } else {
+      console.warn('⚠️ Browser was niet opgestart, dus niet gesloten');
+    }
   }
 });
 
 app.get('/', (req, res) => {
-  console.log('📡 GET / aangeroepen');
+  console.log('📥 GET / aangeroepen');
   res.send('✅ Playwright-service draait');
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🌐 Server draait op poort ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🌐 Server draait op poort ${PORT}`);
+});

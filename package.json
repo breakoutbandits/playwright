@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "postinstall": "npx playwright install chromium"
+    "postinstall": "npx playwright install"
   },
   "engines": {
     "node": "20.x"

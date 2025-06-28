@@ -1,5 +1,5 @@
 const express = require('express');
-const { chromium } = require('playwright'); // Gebruik Playwright
+const { firefox } = require('playwright');
 
 console.log('🟢 Server initialiseren...');
 
@@ -34,11 +34,11 @@ app.post('/run', async (req, res) => {
 
   let browser;
   try {
-    browser = await chromium.launch({
+    browser = await firefox.launch({
       headless: true,
       args: ['--no-sandbox'],
     });
-    console.log('🌐 Chromium succesvol gestart');
+    console.log('🌐 Firefox succesvol gestart');
 
     const context = await browser.newContext();
     const page = await context.newPage();

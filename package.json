@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node index.js",
     "heroku-postbuild": "npx playwright install chromium"
-  }
+  },
   "engines": {
     "node": "20.x"
   },

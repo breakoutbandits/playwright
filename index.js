@@ -1,93 +1,48 @@
 const express = require('express');
-process.env.PLAYWRIGHT_BROWSERS_PATH = '0';
-const { chromium } = require('playwright');
-
-console.log('🟢 Server initialiseren...');
+const bodyParser = require('body-parser');
+const { chromium } = require('playwright-chromium'); // let op: playwright-chromium!
 
 const app = express();
-app.use(express.json());
+const port = process.env.PORT || 3000;
 
-// ✅ API-key beveiliging
-const API_KEY = 'Bandits2022!';
-app.use('/run', (req, res, next) => {
-  console.log('🔐 API-key check wordt uitgevoerd');
-  const incomingKey = req.headers['x-api-key'];
-  if (incomingKey !== API_KEY) {
-    console.warn('🚫 Ongeldige API-key');
-    return res.status(403).json({ success: false, message: 'Forbidden: Invalid API key' });
-  }
-  console.log('✅ API-key geldig');
-  next();
-});
+app.use(bodyParser.json());
 
 app.post('/run', async (req, res) => {
-  console.log('🚀 /run endpoint aangeroepen');
-
-  const data = req.body;
-  console.log('📦 Ontvangen body:', data);
-
-  const formData = {
-    username: data.username || 'support@breakoutbandits.com',
-    password: data.password || 'Bandits2022!',
-  };
-
-  console.log('🧠 Inloggegevens voorbereid. Browser wordt gestart...');
+  console.log('🚀 Ontvangen POST-verzoek bij /run');
 
   let browser;
   try {
     browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox']
-  });
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      chromiumSandbox: false // belangrijk voor Heroku!
+    });
+
     console.log('🌐 Chromium succesvol gestart');
 
-    const context = await browser.newContext();
-    const page = await context.newPage();
+    const page = await browser.newPage();
+    await page.goto('https://www.loquiz.com');
 
-    console.log('🌍 Navigeren naar inlogpagina...');
-    await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
+    // Eventueel: login met username/password
+    // await page.fill('input[name="email"]', req.body.username);
+    // await page.fill('input[name="password"]', req.body.password);
+    // await page.click('button[type="submit"]');
 
-    console.log('✍️ Inloggegevens invullen...');
-    await page.fill('input[placeholder*="email" i]', formData.username);
-    await page.fill('input[placeholder*="password" i]', formData.password);
+    console.log('✅ Pagina geladen');
 
-    console.log('🔓 Inloggen...');
-    await Promise.all([
-      page.click('button[type="submit"]'),
-      page.waitForNavigation({ waitUntil: 'networkidle' }),
-    ]);
+    await browser.close();
+    res.json({ success: true, message: 'Browserrun voltooid.' });
 
-    const pageUrl = page.url();
-    console.log('🌐 Huidige URL na login:', pageUrl);
-
-    if (pageUrl.includes('/dashboard') || !pageUrl.includes('/login')) {
-      console.log('✅ Inloggen gelukt');
-      res.json({ success: true, message: '✅ Succesvol ingelogd op Loquiz' });
-    } else {
-      console.warn('❌ Login mislukt');
-      res.status(401).json({ success: false, message: '❌ Login mislukt' });
-    }
-
-  } catch (err) {
-    console.error('❌ Fout tijdens loginproces:', err);
-    res.status(500).json({ success: false, error: err.toString() });
-
-  } finally {
+  } catch (error) {
+    console.error('❌ Fout tijdens browseractie:', error);
     if (browser) {
       await browser.close();
-      console.log('🧹 Browser gesloten');
-    } else {
-      console.warn('⚠️ Browser was niet opgestart, dus niet gesloten');
+      console.warn('⚠️ Browser werd gesloten na fout');
     }
+    res.json({ success: false, error: error.toString() });
   }
 });
 
-app.get('/', (req, res) => {
-  console.log('📥 GET / aangeroepen');
-  res.send('✅ Playwright-service draait');
-});
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`🌐 Server draait op poort ${PORT}`);
+app.listen(port, () => {
+  console.log(`🌍 Server draait op poort ${port}`);
 });

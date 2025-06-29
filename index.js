@@ -1,5 +1,5 @@
 const express = require('express');
-const { firefox } = require('playwright');
+const { chromium } = require('playwright');
 
 console.log('🟢 Server initialiseren...');
 

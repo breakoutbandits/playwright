@@ -34,10 +34,22 @@ app.post('/run', async (req, res) => {
 
   let browser;
   try {
-    console.log('PLAYWRIGHT_BROWSERS_PATH=', process.env.PLAYWRIGHT_BROWSERS_PATH);  
+    console.log('🚀 Chromium path:', path.join(
+      process.env.PLAYWRIGHT_BROWSERS_PATH || '',
+      'chromium-1179',
+      'chrome-linux',
+      'chrome'
+    ));
+
     browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox']
+    args: ['--no-sandbox'],
+    executablePath: path.join(
+      process.env.PLAYWRIGHT_BROWSERS_PATH || '',
+      'chromium-1179',
+      'chrome-linux',
+      'chrome'
+    ),
   });
     console.log('🌐 Chromium succesvol gestart');
 

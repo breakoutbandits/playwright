@@ -39,7 +39,7 @@ app.post('/run', async (req, res) => {
       process.env.PLAYWRIGHT_BROWSERS_PATH || '',
       'chromium-1179',
       'chrome-linux',
-      'chrome'
+      'chrome-wrapper'
     ));
 
     browser = await chromium.launch({
@@ -49,7 +49,7 @@ app.post('/run', async (req, res) => {
       process.env.PLAYWRIGHT_BROWSERS_PATH || '',
       'chromium-1179',
       'chrome-linux',
-      'chrome'
+      'chrome-wrapper'
     ),
   });
     console.log('🌐 Chromium succesvol gestart');

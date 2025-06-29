@@ -36,7 +36,7 @@ app.post('/run', async (req, res) => {
   try {
       browser = await chromium.launch({
     headless: true,
-    executablePath: '/opt/render/.cache/ms-playwright/chromium-1179/chrome-linux/chrome',
+    executablePath: '/opt/render/.cache/ms-playwright/chromium-1179/chrome-linux/chrome-wrapper',
     args: ['--no-sandbox']
   });
     console.log('🌐 Chromium succesvol gestart');

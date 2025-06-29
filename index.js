@@ -1,6 +1,5 @@
 const express = require('express');
 const { chromium } = require('playwright');
-const path = require('path');
 
 console.log('🟢 Server initialiseren...');
 
@@ -35,22 +34,9 @@ app.post('/run', async (req, res) => {
 
   let browser;
   try {
-    console.log('🚀 Chromium path:', path.join(
-      process.env.PLAYWRIGHT_BROWSERS_PATH || '',
-      'chromium-1179',
-      'chrome-linux',
-      'chrome-wrapper'
-    ));
-
     browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox'],
-    executablePath: path.join(
-      process.env.PLAYWRIGHT_BROWSERS_PATH || '',
-      'chromium-1179',
-      'chrome-linux',
-      'chrome-wrapper'
-    ),
+    args: ['--no-sandbox']
   });
     console.log('🌐 Chromium succesvol gestart');
 

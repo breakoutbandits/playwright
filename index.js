@@ -34,11 +34,12 @@ app.post('/run', async (req, res) => {
 
   let browser;
   try {
-    browser = await firefox.launch({
-      headless: true,
-      args: ['--no-sandbox'],
-    });
-    console.log('🌐 Firefox succesvol gestart');
+      browser = await chromium.launch({
+    headless: true,
+    executablePath: '/opt/render/.cache/ms-playwright/chromium-1179/chrome-linux/chrome',
+    args: ['--no-sandbox']
+  });
+    console.log('🌐 Chromium succesvol gestart');
 
     const context = await browser.newContext();
     const page = await context.newPage();

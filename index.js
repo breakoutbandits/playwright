@@ -47,11 +47,22 @@ app.post('/run', (req, res) => {
       console.log('🧹 Browser gesloten');
 
       // ✅ Koppel terug naar WordPress
-      await fetch(webhook_url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entry_id })
-      });
+      console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
+      console.log('➡️ Payload:', JSON.stringify({ entry_id }));
+
+      try {
+        const response = await fetch(webhook_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entry_id })
+        });
+      
+        const text = await response.text();
+        console.log(`✅ WordPress response (${response.status}):`, text);
+      } catch (err) {
+        console.error('❌ Fout bij fetch naar WordPress:', err);
+      }
+
 
       console.log(`📬 Callback naar WordPress verstuurd voor entry ${entry_id}`);
 

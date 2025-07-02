@@ -89,14 +89,14 @@ app.post('/run', (req, res) => {
       // ✅ Koppel terug naar WordPress
       console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
       console.log('➡️ Payload:', JSON.stringify({ entry_id }));
-      const response = await fetch(webhook_url, {
+      const callbackResponse = await fetch(webhook_url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ entry_id })
       });
       
-        const text = await response.text();
-        console.log(`✅ WordPress response (${response.status}):`, text);
+        const text = await callbackResponse.text();
+        console.log(`✅ WordPress response (${callbackResponse.status}):`, text);
 
         if (!callbackResponse.ok) {
           throw new Error(`❌ WP callback mislukt met status ${callbackResponse.status}`);

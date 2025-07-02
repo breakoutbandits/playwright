@@ -65,12 +65,7 @@ app.post('/run', (req, res) => {
       await browser.close();
       console.log('🧹 Browser gesloten');
     }
-
-      // Hier acties toevoegen
-
-      await browser.close();
-      console.log('🧹 Browser gesloten');
-
+      
       // ✅ Koppel terug naar WordPress
       console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
       console.log('➡️ Payload:', JSON.stringify({ entry_id }));

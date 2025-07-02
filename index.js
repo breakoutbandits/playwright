@@ -11,7 +11,7 @@ app.use(bodyParser.json());
 app.post('/run', (req, res) => {
   console.log('🚀 Ontvangen POST-verzoek bij /run');
 
-  const { entry_id, webhook_url } = req.body;
+  const { entry_id, webhook_url, username, password } = req.body;
 
   if (!entry_id || !webhook_url) {
     console.error('❌ Vereiste velden ontbreken in de request');

@@ -38,27 +38,44 @@ app.post('/run', (req, res) => {
       await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
 
       console.log('🔐 Inloggen...');
-      await page.fill('[formcontrolname="email"]', username);
-      await page.fill('[formcontrolname="password"]', password);
-      await page.click('button[type="submit"]'); // knop heeft nog steeds type="submit"
+      const emailField = page.locator('app-input[formcontrolname="email"] input');
+      const passwordField = page.locator('app-input[formcontrolname="password"] input');
+      
+      await emailField.waitFor(); // expliciet wachten op stabiliteit
+      await emailField.fill(username);
+      await passwordField.fill(password);
+      
+      await page.click('button[type="submit"]');
 
+      // ✅ Wacht op navigatie naar dashboard
       await page.waitForNavigation({ waitUntil: 'networkidle' });
       console.log('✅ Ingelogd');
-
+      
+      // 📄 Ga naar de task-creator pagina
       console.log('📄 Open task-pagina...');
       await page.goto('https://creator.loquiz.com/questions?task=new', { waitUntil: 'networkidle' });
-
+      
+      // 📝 Vul dummyvraag in
       console.log('📝 Vul dummytekst in...');
-      await page.waitForSelector('.ql-editor[contenteditable="true"]', { timeout: 10000 });
-      await page.fill('.ql-editor[contenteditable="true"]', 'Dit is een dummyvraag via Playwright');
-
+      const editor = page.locator('.ql-editor[contenteditable="true"]');
+      await editor.waitFor({ state: 'visible', timeout: 10000 });
+      await editor.fill('Dit is een dummyvraag via Playwright');
+      
+      // ⚙️ Selecteer antwoordtype
       console.log('⚙️ Selecteer antwoordtype...');
-      await page.selectOption('select[formcontrolname="answerType"]', 'none');
-
+      const answerSelect = page.locator('select[formcontrolname="answerType"]');
+      await answerSelect.waitFor({ state: 'visible', timeout: 10000 });
+      await answerSelect.selectOption('none');
+      
+      // 💾 Klik op 'Create task'
       console.log('💾 Klik op Create task...');
-      await page.click('button:has-text("Create task")');
-
+      const createButton = page.locator('button:has-text("Create task")');
+      await createButton.waitFor({ state: 'visible', timeout: 10000 });
+      await createButton.click();
+      
+      // 🥳 Klaar
       console.log('🥳 Taak succesvol aangemaakt');
+
       
       // ✅ Koppel terug naar WordPress
       console.log('➡️ Callback wordt verstuurd naar:', webhook_url);

@@ -12,10 +12,18 @@ app.post('/run', (req, res) => {
   console.log('🚀 Ontvangen POST-verzoek bij /run');
 
   const { entry_id, webhook_url, username, password } = req.body;
+  const apiKey = req.headers['x-api-key'];
 
-  if (!entry_id || !webhook_url) {
-    console.error('❌ Vereiste velden ontbreken in de request');
-    return res.status(400).json({ success: false, error: 'entry_id of webhook_url ontbreekt' });
+  // 🔐 Beveiliging via API-key
+  if (apiKey !== process.env.API_KEY) {
+    console.warn('⛔ Ongeldige API key');
+    return res.status(403).json({ success: false, error: 'Unauthorized' });
+  }
+
+  // ✅ Validatie van vereiste velden
+  if (!entry_id || !webhook_url || !username || !password) {
+    console.error('❌ Ontbrekende velden in request');
+    return res.status(400).json({ success: false, error: 'Verplichte velden ontbreken' });
   }
 
   // Geef direct een response terug aan WordPress (max 5 sec wachten daar)
@@ -41,10 +49,11 @@ app.post('/run', (req, res) => {
       const emailField = page.locator('app-input[formcontrolname="email"] input');
       const passwordField = page.locator('app-input[formcontrolname="password"] input');
       
-      await emailField.waitFor(); // expliciet wachten op stabiliteit
+      await emailField.waitFor({ state: 'visible', timeout: 10000 });
+      await passwordField.waitFor({ state: 'visible', timeout: 10000 });
+      
       await emailField.fill(username);
       await passwordField.fill(password);
-      
       await page.click('button[type="submit"]');
 
       // ✅ Wacht op navigatie naar dashboard
@@ -80,16 +89,19 @@ app.post('/run', (req, res) => {
       // ✅ Koppel terug naar WordPress
       console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
       console.log('➡️ Payload:', JSON.stringify({ entry_id }));
-
-      
-        const response = await fetch(webhook_url, {
+      const response = await fetch(webhook_url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ entry_id })
-        });
+      });
       
         const text = await response.text();
         console.log(`✅ WordPress response (${response.status}):`, text);
+
+        if (!callbackResponse.ok) {
+          throw new Error(`❌ WP callback mislukt met status ${callbackResponse.status}`);
+        }
+      
       } catch (err) {
         console.error('❌ Fout tijdens uitvoeren:', err);
       } finally {
@@ -100,7 +112,6 @@ app.post('/run', (req, res) => {
     }
   })();
 });
-
 
 app.get('/', (req, res) => {
   res.send('👋 Hello!');

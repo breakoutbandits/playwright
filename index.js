@@ -34,14 +34,39 @@ app.post('/run', (req, res) => {
       console.log('🌐 Chromium succesvol gestart');
 
       const page = await browser.newPage();
-      await page.goto('https://www.loquiz.com');
+      console.log('🌐 Ga naar inlogpagina...');
+      await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
 
-      console.log('✅ Pagina geladen');
+      console.log('🔐 Inloggen...');
+      await page.fill('[formcontrolname="email"]', username);
+      await page.fill('[formcontrolname="password"]', password);
+      await page.click('button[type="submit"]'); // knop heeft nog steeds type="submit"
 
-      // Hier eventueel login/actie toevoegen
-      // await page.fill('input[name="email"]', '...');
-      // await page.fill('input[name="password"]', '...');
-      // await page.click('button[type="submit"]');
+      await page.waitForNavigation({ waitUntil: 'networkidle' });
+      console.log('✅ Ingelogd');
+
+      console.log('📄 Open task-pagina...');
+      await page.goto('https://creator.loquiz.com/questions?task=new', { waitUntil: 'networkidle' });
+
+      console.log('📝 Vul dummytekst in...');
+      await page.waitForSelector('.ql-editor[contenteditable="true"]', { timeout: 10000 });
+      await page.fill('.ql-editor[contenteditable="true"]', 'Dit is een dummyvraag via Playwright');
+
+      console.log('⚙️ Selecteer antwoordtype...');
+      await page.selectOption('select[formcontrolname="answerType"]', 'none');
+
+      console.log('💾 Klik op Create task...');
+      await page.click('button:has-text("Create task")');
+
+      console.log('🥳 Taak succesvol aangemaakt');
+    } catch (err) {
+      console.error('❌ Fout tijdens uitvoeren:', err);
+    } finally {
+      await browser.close();
+      console.log('🧹 Browser gesloten');
+    }
+
+      // Hier acties toevoegen
 
       await browser.close();
       console.log('🧹 Browser gesloten');

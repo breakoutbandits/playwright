@@ -59,18 +59,12 @@ app.post('/run', (req, res) => {
       await page.click('button:has-text("Create task")');
 
       console.log('🥳 Taak succesvol aangemaakt');
-    } catch (err) {
-      console.error('❌ Fout tijdens uitvoeren:', err);
-    } finally {
-      await browser.close();
-      console.log('🧹 Browser gesloten');
-    }
       
       // ✅ Koppel terug naar WordPress
       console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
       console.log('➡️ Payload:', JSON.stringify({ entry_id }));
 
-      try {
+      
         const response = await fetch(webhook_url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -80,17 +74,11 @@ app.post('/run', (req, res) => {
         const text = await response.text();
         console.log(`✅ WordPress response (${response.status}):`, text);
       } catch (err) {
-        console.error('❌ Fout bij fetch naar WordPress:', err);
-      }
-
-
-      console.log(`📬 Callback naar WordPress verstuurd voor entry ${entry_id}`);
-
-    } catch (error) {
-      console.error('❌ Fout tijdens browseractie:', error);
+        console.error('❌ Fout tijdens uitvoeren:', err);
+      } finally {
       if (browser) {
         await browser.close();
-        console.warn('⚠️ Browser gesloten na fout');
+        console.warn('⚠️ Browser gesloten');
       }
     }
   })();

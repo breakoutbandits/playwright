@@ -78,39 +78,39 @@ app.post('/run', (req, res) => {
       //await page.goto('https://creator.loquiz.com/games/edit/F3YSSVDWCJ/questions?task=GHyDl2RAY', { waitUntil: 'networkidle' });
 
       // 📄 Open bestaande game-taak voor bewerking
-      //const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=YaqWSmaf7`;
-      //console.log('📄 Ga naar:', editUrl);
-      //await page.goto(editUrl, { waitUntil: 'networkidle' });
-      //await takeScreenshot(page, '03_task_page_loaded');
+      const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=YaqWSmaf7`;
+      console.log('📄 Ga naar:', editUrl);
+      await page.goto(editUrl, { waitUntil: 'networkidle' });
+      await takeScreenshot(page, '03_task_page_loaded');
 
       // 📄 Open de gamepagina zelf i.p.v. directe task-URL
-      const gamePageUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions`;
-      console.log('📄 Ga naar:', gamePageUrl);
-      await page.goto(gamePageUrl, { waitUntil: 'networkidle' });
+      //const gamePageUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions`;
+      //console.log('📄 Ga naar:', gamePageUrl);
+      //await page.goto(gamePageUrl, { waitUntil: 'networkidle' });
       
       // 🕵️ Zoek de juiste task-link in de lijst
       // 🕒 Wacht tot de taaklijst echt geladen is
-      await takeScreenshot(page, '03_task_page_loaded');
-      await page.waitForSelector('questioncell a[href]', { timeout: 15000 });
+      //await takeScreenshot(page, '03_task_page_loaded');
+      //await page.waitForSelector('questioncell a[href]', { timeout: 15000 });
       
-      const allLinks = await page.$$eval('questioncell a[href]', links =>
-        links.map(link => link.getAttribute('href'))
-      );
-      console.log('📋 Alle taaklinks:', allLinks);
+      //const allLinks = await page.$$eval('questioncell a[href]', links =>
+      //  links.map(link => link.getAttribute('href'))
+      //);
+      //console.log('📋 Alle taaklinks:', allLinks);
 
       
       // 🔗 Zoek de specifieke taak-link
-      const taskLinkSelector = `a[href="/games/edit/${game_id}/questions?task=YaqWSmaf7"]`;
-      console.log(`🔗 Zoek task-link via selector: ${taskLinkSelector}`);
-      const taskLink = page.locator(taskLinkSelector);
+      //const taskLinkSelector = `a[href="/games/edit/${game_id}/questions?task=YaqWSmaf7"]`;
+      //console.log(`🔗 Zoek task-link via selector: ${taskLinkSelector}`);
+      //const taskLink = page.locator(taskLinkSelector);
       
       // Wacht tot de specifieke link zichtbaar is
-      await taskLink.waitFor({ state: 'visible', timeout: 10000 });
-      await taskLink.click();
-      console.log('✅ Taaklink aangeklikt, dialoog geopend');
+      //await taskLink.waitFor({ state: 'visible', timeout: 10000 });
+      //await taskLink.click();
+      //console.log('✅ Taaklink aangeklikt, dialoog geopend');
       
       // 📸 Screenshot voor controle
-      await takeScreenshot(page, '04_after_task_dialog_opened');
+      //await takeScreenshot(page, '04_after_task_dialog_opened');
      
       // 📝 Vul dummyvraag in
       console.log('📝 Vul dummytekst in...');

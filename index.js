@@ -2,11 +2,23 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { chromium } = require('playwright-chromium'); // let op: playwright-chromium!
 const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
+
+// Route om screenshot te bekijken
+app.get('/screenshot', (req, res) => {
+  const filePath = path.join(__dirname, 'screenshot.png');
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Geen screenshot gevonden');
+  }
+});
 
 app.post('/run', (req, res) => {
   console.log('🚀 Ontvangen POST-verzoek bij /run');
@@ -90,6 +102,11 @@ app.post('/run', (req, res) => {
 
       // 🥳 Klaar
       console.log('🥳 Taak succesvol aangepast');
+
+      // 📸 Screenshot na dialoog
+      await page.waitForTimeout(1000);
+      await page.screenshot({ path: 'screenshot.png' });
+      console.log('📸 Screenshot gemaakt na Save as copy');
 
       let clicked = false;
       for (let i = 0; i < 30; i++) {

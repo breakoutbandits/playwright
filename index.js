@@ -10,15 +10,14 @@ const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-// Route om screenshot te bekijken
-app.get('/screenshot', (req, res) => {
-  const filePath = path.join(__dirname, 'screenshot.png');
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).send('Geen screenshot gevonden');
-  }
-});
+// Helper om screenshots te maken
+async function takeScreenshot(page, name) {
+  const dir = path.join(__dirname, 'screenshots');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+  const filePath = path.join(dir, `${name}.png`);
+  await page.screenshot({ path: filePath, fullPage: true });
+  console.log(`📸 Screenshot opgeslagen als: ${filePath}`);
+}
 
 app.post('/run', (req, res) => {
   console.log('🚀 Ontvangen POST-verzoek bij /run');
@@ -56,6 +55,7 @@ app.post('/run', (req, res) => {
       const page = await browser.newPage();
       console.log('🌐 Ga naar inlogpagina...');
       await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
+      await takeScreenshot(page, '01_login_page_loaded');
 
       console.log('🔐 Inloggen...');
       const emailField = page.locator('app-input[formcontrolname="email"] input');
@@ -71,6 +71,7 @@ app.post('/run', (req, res) => {
       // ✅ Wacht op navigatie naar dashboard
       await page.waitForNavigation({ waitUntil: 'networkidle' });
       console.log('✅ Ingelogd');
+      await takeScreenshot(page, '02_after_login');
       
       // 📄 Ga naar de task-editor pagina
       //console.log('📄 Open task-pagina...');
@@ -80,13 +81,14 @@ app.post('/run', (req, res) => {
       const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=GHyDl2RAY`;
       console.log('📄 Ga naar:', editUrl);
       await page.goto(editUrl, { waitUntil: 'networkidle' });
-
+      await takeScreenshot(page, '03_task_page_loaded');
       
       // 📝 Vul dummyvraag in
       console.log('📝 Vul dummytekst in...');
       const editor = page.locator('.ql-editor[contenteditable="true"]');
       await editor.waitFor({ state: 'visible', timeout: 10000 });
       await editor.fill('Dit is een dummyvraag via Playwright');
+      await takeScreenshot(page, '04_editor_filled');
       
       // ⚙️ Selecteer antwoordtype
       //console.log('⚙️ Selecteer antwoordtype...');
@@ -102,6 +104,7 @@ app.post('/run', (req, res) => {
 
       // 🥳 Klaar
       console.log('🥳 Taak succesvol aangepast');
+      await takeScreenshot(page, '05_save_as_copy_clicked');
 
       // 📸 Screenshot na dialoog
       await page.waitForTimeout(1000);
@@ -122,6 +125,7 @@ app.post('/run', (req, res) => {
               await btn.click();
               console.log('💾 Eindsave uitgevoerd');
               clicked = true;
+              await takeScreenshot(page, '07_final_save_clicked');
               break;
             }
           }
@@ -130,6 +134,7 @@ app.post('/run', (req, res) => {
       
       if (!clicked) {
         console.warn('⚠️ Kon eind-saveknop niet vinden');
+        await takeScreenshot(page, '06_after_lightbox_closed');
         throw new Error('❌ Eind-saveknop "4. Save" niet gevonden binnen tijdslimiet');
       }
 
@@ -158,6 +163,15 @@ app.post('/run', (req, res) => {
       }
     }
   })();
+});
+
+app.get('/screenshot/:name', (req, res) => {
+  const file = path.join(__dirname, 'screenshots', `${req.params.name}.png`);
+  if (fs.existsSync(file)) {
+    res.sendFile(file);
+  } else {
+    res.status(404).send('Screenshot niet gevonden');
+  }
 });
 
 app.get('/', (req, res) => {

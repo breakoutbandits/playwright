@@ -88,19 +88,18 @@ app.post('/run', (req, res) => {
       await createButton.waitFor({ state: 'visible', timeout: 10000 });
       await createButton.click();
 
+      // 🥳 Klaar
+      console.log('🥳 Taak succesvol aangepast');
+
       // ❎ Wacht tot dialoog sluit (Angular component)
       await page.waitForSelector('app-dialog-box', { state: 'detached', timeout: 10000 });
       console.log('📦 Dialoog gesloten');
       
-      // ✅ Klik op '4. Save' knop
-      //const finalSaveButton = page.locator('a.btn.btn-success:has-text("4. Save")');
-      const finalSaveButton = page.locator('a.btn.btn-success').first();
-      await finalSaveButton.waitFor({ state: 'visible' });
-      await finalSaveButton.click();
-      console.log('💾 Game saved');
-      
-      // 🥳 Klaar
-      console.log('🥳 Taak succesvol aangepast');
+      // ✅ Wacht op "4. Save" knop na dialog actie
+      const saveGameButton = page.locator('a.btn.btn-success:has-text("4. Save")');
+      await saveGameButton.waitFor({ state: 'visible', timeout: 15000 });
+      await saveGameButton.click();
+      console.log('📥 Game opgeslagen');
       
       // ✅ Koppel terug naar WordPress
       console.log('➡️ Callback wordt verstuurd naar:', webhook_url);

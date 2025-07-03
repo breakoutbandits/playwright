@@ -89,12 +89,25 @@ app.post('/run', (req, res) => {
       await page.goto(gamePageUrl, { waitUntil: 'networkidle' });
       
       // 🕵️ Zoek de juiste task-link in de lijst
-      console.log(`🔗 Zoek task-link met taskId GHyDl2RAY...`);
-      const taskLink = page.locator(`a[href="/games/edit/${game_id}/questions?task=GHyDl2RAY"]`);
+      // 🕒 Wacht tot de taaklijst echt geladen is
+      await takeScreenshot(page, '03_task_page_loaded');
+      await page.waitForSelector('questioncell a[href]', { timeout: 15000 });
+      
+      const allLinks = await page.$$eval('questioncell a[href]', links =>
+        links.map(link => link.getAttribute('href'))
+      );
+      console.log('📋 Alle taaklinks:', allLinks);
+
+      
+      // 🔗 Zoek de specifieke taak-link
+      const taskLinkSelector = `a[href="/games/edit/${game_id}/questions?task=GHyDl2RAY"]`;
+      console.log(`🔗 Zoek task-link via selector: ${taskLinkSelector}`);
+      const taskLink = page.locator(taskLinkSelector);
+      
+      // Wacht tot de specifieke link zichtbaar is
       await taskLink.waitFor({ state: 'visible', timeout: 10000 });
       await taskLink.click();
-      console.log('✅ Dialoog geopend via task-link');
-      await page.waitForTimeout(2000); // geef even de tijd om te laden
+      console.log('✅ Taaklink aangeklikt, dialoog geopend');
       
       // 📸 Screenshot voor controle
       await takeScreenshot(page, '04_after_task_dialog_opened');

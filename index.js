@@ -92,29 +92,29 @@ app.post('/run', (req, res) => {
       console.log('🥳 Taak succesvol aangepast');
 
       // Save game
-      console.log('🕵️ Zoeken naar knop die 4. Save wordt...');
+//      console.log('🕵️ Zoeken naar knop die 4. Save wordt...');
       const finalSaveButton = page.locator('a.btn:has-text("4.")');
       
       // Wacht tot de knop zichtbaar is
       await finalSaveButton.waitFor({ state: 'visible', timeout: 15000 });
       
       // Wacht tot de knop daadwerkelijk de juiste class en tekst heeft
-      let maxRetries = 30;
-      let delay = 500; // in ms
+  //    let maxRetries = 30;
+    //  let delay = 500; // in ms
       
-      for (let i = 0; i < maxRetries; i++) {
-        const className = await finalSaveButton.getAttribute('class');
-        const text = (await finalSaveButton.innerText()).trim();
-        console.log(`🔍 Poging ${i + 1}: class="${className}", tekst="${text}"`);
+  //    for (let i = 0; i < maxRetries; i++) {
+        //const className = await finalSaveButton.getAttribute('class');
+        //const text = (await finalSaveButton.innerText()).trim();
+        //console.log(`🔍 Poging ${i + 1}: class="${className}", tekst="${text}"`);
       
-        if (className.includes('btn-success') && text === '4. Save') {
-          console.log('✅ Knop is gereed, klik wordt uitgevoerd');
+        //if (className.includes('btn-success') && text === '4. Save') {
+          //console.log('✅ Knop is gereed, klik wordt uitgevoerd');
           await finalSaveButton.click();
-          break;
-        }
+          //break;
+        //}
       
-        await page.waitForTimeout(delay);
-      }
+        //await page.waitForTimeout(delay);
+    //  }
       
       console.log('💾 Eindsave uitgevoerd');
       

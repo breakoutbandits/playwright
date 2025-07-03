@@ -93,8 +93,9 @@ app.post('/run', (req, res) => {
       console.log('📦 Dialoog gesloten');
       
       // ✅ Klik op '4. Save' knop
-      const finalSaveButton = page.locator('a.btn.btn-success:has-text("4. Save")');
-      await finalSaveButton.waitFor({ state: 'visible', timeout: 10000 });
+      //const finalSaveButton = page.locator('a.btn.btn-success:has-text("4. Save")');
+      const finalSaveButton = page.locator('a.btn.btn-success').first();
+      await finalSaveButton.waitFor({ state: 'visible' });
       await finalSaveButton.click();
       console.log('💾 Game saved');
       

@@ -103,7 +103,7 @@ app.post('/run', (req, res) => {
       console.log('📝 Vul dummytekst in...');
       const editor = page.locator('.ql-editor[contenteditable="true"]');
       await editor.waitFor({ state: 'visible', timeout: 10000 });
-      await editor.fill('Dit is een dummyvraag via Playwright');
+      await editor.fill('Dit is een dummyvraag via Playwright v2');
       await takeScreenshot(page, '04_editor_filled');
       
       // ⚙️ Selecteer antwoordtype

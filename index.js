@@ -93,27 +93,29 @@ app.post('/run', (req, res) => {
 
       let clicked = false;
       for (let i = 0; i < 30; i++) {
-        const btn = await page.$('a.btn');
-        if (btn) {
-          const text = await btn.textContent();
-          const className = await btn.getAttribute('class');
-          console.log(`🔍 Poging ${i}: class="${className}", tekst="${text.trim()}"`);
-      
-          if (className.includes('btn-success') && text.trim() === '4. Save') {
-            await btn.click();
-            console.log('💾 Eindsave uitgevoerd');
-            clicked = true;
-            break;
+        const buttons = await page.$$('a.btn'); // Haal ALLE knoppen op
+        console.log(`🔍 Poging ${i}: aantal knoppen gevonden: ${buttons.length}`);
+
+        for (const btn of buttons) {
+            const text = (await btn.textContent())?.trim();
+            const className = await btn.getAttribute('class');
+            console.log(`🔘 Gevonden knop: class="${className}", tekst="${text}"`);
+        
+            if (className.includes('btn-success') && text === '4. Save') {
+              await btn.click();
+              console.log('💾 Eindsave uitgevoerd');
+              clicked = true;
+              break;
+            }
           }
-        }
         await page.waitForTimeout(1000); // 1 seconde pauze
       }
       
       if (!clicked) {
         console.warn('⚠️ Kon eind-saveknop niet vinden');
+        throw new Error('❌ Eind-saveknop "4. Save" niet gevonden binnen tijdslimiet');
       }
 
-      
       // ✅ Koppel terug naar WordPress
       console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
       console.log('➡️ Payload:', JSON.stringify({ entry_id }));

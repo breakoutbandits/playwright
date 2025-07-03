@@ -11,7 +11,7 @@ app.use(bodyParser.json());
 app.post('/run', (req, res) => {
   console.log('🚀 Ontvangen POST-verzoek bij /run');
 
-  const { entry_id, webhook_url, username, password } = req.body;
+  const { entry_id, webhook_url, username, password, game_id} = req.body;
   const apiKey = req.headers['x-api-key'];
 
   // 🔐 Beveiliging via API-key
@@ -21,7 +21,7 @@ app.post('/run', (req, res) => {
   }
 
   // ✅ Validatie van vereiste velden
-  if (!entry_id || !webhook_url || !username || !password) {
+  if (!entry_id || !webhook_url || !username || !password || !game_id) {
     console.error('❌ Ontbrekende velden in request');
     return res.status(400).json({ success: false, error: 'Verplichte velden ontbreken' });
   }
@@ -60,9 +60,15 @@ app.post('/run', (req, res) => {
       await page.waitForNavigation({ waitUntil: 'networkidle' });
       console.log('✅ Ingelogd');
       
-      // 📄 Ga naar de task-creator pagina
-      console.log('📄 Open task-pagina...');
-      await page.goto('https://creator.loquiz.com/questions?task=new', { waitUntil: 'networkidle' });
+      // 📄 Ga naar de task-editor pagina
+      //console.log('📄 Open task-pagina...');
+      //await page.goto('https://creator.loquiz.com/games/edit/F3YSSVDWCJ/questions?task=GHyDl2RAY', { waitUntil: 'networkidle' });
+
+      // 📄 Open bestaande game-taak voor bewerking
+      const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=GHyDl2RAY`;
+      console.log('📄 Ga naar:', editUrl);
+      await page.goto(editUrl, { waitUntil: 'networkidle' });
+
       
       // 📝 Vul dummyvraag in
       console.log('📝 Vul dummytekst in...');
@@ -71,19 +77,19 @@ app.post('/run', (req, res) => {
       await editor.fill('Dit is een dummyvraag via Playwright');
       
       // ⚙️ Selecteer antwoordtype
-      console.log('⚙️ Selecteer antwoordtype...');
-      const answerSelect = page.locator('select[formcontrolname="answerType"]');
-      await answerSelect.waitFor({ state: 'visible', timeout: 10000 });
-      await answerSelect.selectOption('none');
+      //console.log('⚙️ Selecteer antwoordtype...');
+      //const answerSelect = page.locator('select[formcontrolname="answerType"]');
+      //await answerSelect.waitFor({ state: 'visible', timeout: 10000 });
+      //await answerSelect.selectOption('none');
       
       // 💾 Klik op 'Create task'
-      console.log('💾 Klik op Create task...');
-      const createButton = page.locator('button:has-text("Create task")');
+      console.log('💾 Klik op Save as copy...');
+      const createButton = page.locator('button:has-text("Save as copy")');
       await createButton.waitFor({ state: 'visible', timeout: 10000 });
       await createButton.click();
       
       // 🥳 Klaar
-      console.log('🥳 Taak succesvol aangemaakt');
+      console.log('🥳 Taak succesvol aangepast');
 
       
       // ✅ Koppel terug naar WordPress

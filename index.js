@@ -91,22 +91,32 @@ app.post('/run', (req, res) => {
       // 🥳 Klaar
       console.log('🥳 Taak succesvol aangepast');
 
-      // ❎ Wacht tot dialoog sluit (Angular component)
-      await page.waitForSelector('app-dialog-box', { state: 'detached', timeout: 10000 });
-      console.log('📦 Dialoog gesloten');
+      // Save game
+      console.log('🕵️ Zoeken naar knop die 4. Save wordt...');
+      const finalSaveButton = page.locator('a.btn:has-text("4.")');
       
-      // ✅ Wacht op "4. Save" knop na dialog actie
-      console.log('🕵️ Wachten op knop "4. Save"...');
+      // Wacht tot de knop zichtbaar is
+      await finalSaveButton.waitFor({ state: 'visible', timeout: 15000 });
       
-      await page.waitForFunction(() => {
-        const buttons = [...document.querySelectorAll('a.btn.btn-success')];
-        return buttons.some(el => el.textContent.trim() === '4. Save');
-      }, { timeout: 15000 });
+      // Wacht tot de knop daadwerkelijk de juiste class en tekst heeft
+      let maxRetries = 30;
+      let delay = 500; // in ms
       
-      console.log('✅ Knop "4. Save" gevonden, nu klikken...');
-      await page.click('a.btn.btn-success:has-text("4. Save")');
-      console.log('📥 Game opgeslagen');
-
+      for (let i = 0; i < maxRetries; i++) {
+        const className = await finalSaveButton.getAttribute('class');
+        const text = (await finalSaveButton.innerText()).trim();
+        console.log(`🔍 Poging ${i + 1}: class="${className}", tekst="${text}"`);
+      
+        if (className.includes('btn-success') && text === '4. Save') {
+          console.log('✅ Knop is gereed, klik wordt uitgevoerd');
+          await finalSaveButton.click();
+          break;
+        }
+      
+        await page.waitForTimeout(delay);
+      }
+      
+      console.log('💾 Eindsave uitgevoerd');
       
       // ✅ Koppel terug naar WordPress
       console.log('➡️ Callback wordt verstuurd naar:', webhook_url);

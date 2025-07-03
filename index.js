@@ -96,10 +96,17 @@ app.post('/run', (req, res) => {
       console.log('📦 Dialoog gesloten');
       
       // ✅ Wacht op "4. Save" knop na dialog actie
-      const saveGameButton = page.locator('a.btn.btn-success:has-text("4. Save")');
-      await saveGameButton.waitFor({ state: 'visible', timeout: 15000 });
-      await saveGameButton.click();
+      console.log('🕵️ Wachten op knop "4. Save"...');
+      
+      await page.waitForFunction(() => {
+        const buttons = [...document.querySelectorAll('a.btn.btn-success')];
+        return buttons.some(el => el.textContent.trim() === '4. Save');
+      }, { timeout: 15000 });
+      
+      console.log('✅ Knop "4. Save" gevonden, nu klikken...');
+      await page.click('a.btn.btn-success:has-text("4. Save")');
       console.log('📥 Game opgeslagen');
+
       
       // ✅ Koppel terug naar WordPress
       console.log('➡️ Callback wordt verstuurd naar:', webhook_url);

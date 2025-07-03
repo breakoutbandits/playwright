@@ -84,13 +84,13 @@ app.post('/run', (req, res) => {
       //await takeScreenshot(page, '03_task_page_loaded');
 
       // 📄 Open de gamepagina zelf i.p.v. directe task-URL
-      const gamePageUrl = `https://creator.loquiz.com/games/edit/${gameId}/questions`;
+      const gamePageUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions`;
       console.log('📄 Ga naar:', gamePageUrl);
       await page.goto(gamePageUrl, { waitUntil: 'networkidle' });
       
       // 🕵️ Zoek de juiste task-link in de lijst
-      console.log(`🔗 Zoek task-link met taskId ${taskId}...`);
-      const taskLink = page.locator(`a[href="/games/edit/${gameId}/questions?task=${taskId}"]`);
+      console.log(`🔗 Zoek task-link met taskId GHyDl2RAY...`);
+      const taskLink = page.locator(`a[href="/games/edit/${game_id}/questions?task=GHyDl2RAY"]`);
       await taskLink.waitFor({ state: 'visible', timeout: 10000 });
       await taskLink.click();
       console.log('✅ Dialoog geopend via task-link');

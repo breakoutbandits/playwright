@@ -78,7 +78,7 @@ app.post('/run', (req, res) => {
       //await page.goto('https://creator.loquiz.com/games/edit/F3YSSVDWCJ/questions?task=GHyDl2RAY', { waitUntil: 'networkidle' });
 
       // 📄 Open bestaande game-taak voor bewerking
-      //const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=GHyDl2RAY`;
+      //const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=YaqWSmaf7`;
       //console.log('📄 Ga naar:', editUrl);
       //await page.goto(editUrl, { waitUntil: 'networkidle' });
       //await takeScreenshot(page, '03_task_page_loaded');
@@ -100,7 +100,7 @@ app.post('/run', (req, res) => {
 
       
       // 🔗 Zoek de specifieke taak-link
-      const taskLinkSelector = `a[href="/games/edit/${game_id}/questions?task=GHyDl2RAY"]`;
+      const taskLinkSelector = `a[href="/games/edit/${game_id}/questions?task=YaqWSmaf7"]`;
       console.log(`🔗 Zoek task-link via selector: ${taskLinkSelector}`);
       const taskLink = page.locator(taskLinkSelector);
       
@@ -116,7 +116,7 @@ app.post('/run', (req, res) => {
       console.log('📝 Vul dummytekst in...');
       const editor = page.locator('.ql-editor[contenteditable="true"]');
       await editor.waitFor({ state: 'visible', timeout: 10000 });
-      await editor.fill('Dit is een dummyvraag via Playwright v2');
+      await editor.fill('Dit is een dummyvraag via Playwright v3');
       await takeScreenshot(page, '04_editor_filled');
       
       // ⚙️ Selecteer antwoordtype

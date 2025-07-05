@@ -84,7 +84,7 @@ app.post('/run', (req, res) => {
         // 📝 Vul vraagtekst in (Loquiz label en antwoord)
         const editor = page.locator('.ql-editor[contenteditable="true"]');
         await editor.waitFor({ state: 'visible', timeout: 10000 });
-        const newText = `Vraag: ${task.label}\nAntwoord: ${task.answer}`;
+        const newText = `${task.label}\n${task.answer}`;
         await editor.fill(newText);
         console.log('📝 Editor gevuld:', newText);
         await takeScreenshot(page, `task_${i + 1}_editor_filled`);

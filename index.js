@@ -19,6 +19,48 @@ async function takeScreenshot(page, name) {
   console.log(`📸 Screenshot opgeslagen als: ${filePath}`);
 }
 
+// Antwoorden invullen functie
+async function vulAntwoorden(page, options) {
+  const { option1, option2, option3, option4 } = options;
+
+  const antwoordenVelden = await page.locator('.answers__group').elementHandles();
+
+  // Index van het correcte antwoordveld bepalen
+  let correctIndex = -1;
+  for (let i = 0; i < antwoordenVelden.length; i++) {
+    const veld = antwoordenVelden[i];
+    const html = await veld.innerHTML();
+    if (html.includes('Correct')) {
+      correctIndex = i;
+      break;
+    }
+  }
+
+  if (correctIndex === -1) {
+    console.warn('⚠️ Geen veld gevonden met "Correct" status');
+    return;
+  }
+
+  const opties = [option2, option3, option4];
+  for (let i = opties.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [opties[i], opties[j]] = [opties[j], opties[i]];
+  }
+
+  for (let i = 0; i < antwoordenVelden.length; i++) {
+    const input = await antwoordenVelden[i].$('input[type="text"]');
+    if (!input) continue;
+
+    if (i === correctIndex) {
+      await input.fill(option1);
+    } else {
+      const optie = opties.shift();
+      if (optie) await input.fill(optie);
+    }
+  }
+}
+
+// Main route
 app.post('/run', (req, res) => {
   console.log('🚀 Ontvangen POST-verzoek bij /run');
 
@@ -87,6 +129,16 @@ app.post('/run', (req, res) => {
         const newText = `${task.label}\n${task.answer}`;
         await editor.fill(newText);
         console.log('📝 Editor gevuld:', newText);
+
+        // Vul antwoorden
+        await vulAntwoorden(page, {
+          option1: task.option1,
+          option2: task.option2,
+          option3: task.option3,
+          option4: task.option4
+        });
+        console.log('✅ Antwoorden ingevuld');
+        
         await takeScreenshot(page, `task_${i + 1}_editor_filled`);
 
         // 💾 Klik op "Save as copy"

@@ -73,57 +73,18 @@ app.post('/run', (req, res) => {
       console.log('✅ Ingelogd');
       await takeScreenshot(page, '02_after_login');
       
-      // 📄 Ga naar de task-editor pagina
-      //console.log('📄 Open task-pagina...');
-      //await page.goto('https://creator.loquiz.com/games/edit/F3YSSVDWCJ/questions?task=GHyDl2RAY', { waitUntil: 'networkidle' });
-
       // 📄 Open bestaande game-taak voor bewerking
-      const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=YaqWSmaf7`;
+      const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=g9Okd0C1p`;
       console.log('📄 Ga naar:', editUrl);
       await page.goto(editUrl, { waitUntil: 'networkidle' });
       await takeScreenshot(page, '03_task_page_loaded');
 
-      // 📄 Open de gamepagina zelf i.p.v. directe task-URL
-      //const gamePageUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions`;
-      //console.log('📄 Ga naar:', gamePageUrl);
-      //await page.goto(gamePageUrl, { waitUntil: 'networkidle' });
-      
-      // 🕵️ Zoek de juiste task-link in de lijst
-      // 🕒 Wacht tot de taaklijst echt geladen is
-      //await takeScreenshot(page, '03_task_page_loaded');
-      //await page.waitForSelector('questioncell a[href]', { timeout: 15000 });
-      
-      //const allLinks = await page.$$eval('questioncell a[href]', links =>
-      //  links.map(link => link.getAttribute('href'))
-      //);
-      //console.log('📋 Alle taaklinks:', allLinks);
-
-      
-      // 🔗 Zoek de specifieke taak-link
-      //const taskLinkSelector = `a[href="/games/edit/${game_id}/questions?task=YaqWSmaf7"]`;
-      //console.log(`🔗 Zoek task-link via selector: ${taskLinkSelector}`);
-      //const taskLink = page.locator(taskLinkSelector);
-      
-      // Wacht tot de specifieke link zichtbaar is
-      //await taskLink.waitFor({ state: 'visible', timeout: 10000 });
-      //await taskLink.click();
-      //console.log('✅ Taaklink aangeklikt, dialoog geopend');
-      
-      // 📸 Screenshot voor controle
-      //await takeScreenshot(page, '04_after_task_dialog_opened');
-     
       // 📝 Vul dummyvraag in
       console.log('📝 Vul dummytekst in...');
       const editor = page.locator('.ql-editor[contenteditable="true"]');
       await editor.waitFor({ state: 'visible', timeout: 10000 });
-      await editor.fill('Dit is een dummyvraag via Playwright v3');
+      await editor.fill('Dit is een dummyvraag via Playwright v4');
       await takeScreenshot(page, '04_editor_filled');
-      
-      // ⚙️ Selecteer antwoordtype
-      //console.log('⚙️ Selecteer antwoordtype...');
-      //const answerSelect = page.locator('select[formcontrolname="answerType"]');
-      //await answerSelect.waitFor({ state: 'visible', timeout: 10000 });
-      //await answerSelect.selectOption('none');
       
       // 💾 Klik op 'Create task'
       console.log('💾 Klik op Save as copy...');
@@ -156,6 +117,9 @@ app.post('/run', (req, res) => {
               clicked = true;
               await takeScreenshot(page, '07_final_save_clicked');
               break;
+            }
+            if (clicked) {
+              break; // breek buitenste loop direct zodra geklikt is
             }
           }
         await page.waitForTimeout(1000); // 1 seconde pauze

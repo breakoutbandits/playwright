@@ -74,7 +74,7 @@ app.post('/run', (req, res) => {
       await takeScreenshot(page, '02_after_login');
       
       // 📄 Open bestaande game-taak voor bewerking
-      const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=g9Okd0C1p`;
+      const editUrl = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=z7myfp5O7`;
       console.log('📄 Ga naar:', editUrl);
       await page.goto(editUrl, { waitUntil: 'networkidle' });
       await takeScreenshot(page, '03_task_page_loaded');
@@ -83,7 +83,7 @@ app.post('/run', (req, res) => {
       console.log('📝 Vul dummytekst in...');
       const editor = page.locator('.ql-editor[contenteditable="true"]');
       await editor.waitFor({ state: 'visible', timeout: 10000 });
-      await editor.fill('Dit is een dummyvraag via Playwright v4');
+      await editor.fill('Dit is een dummyvraag via Playwright v5');
       await takeScreenshot(page, '04_editor_filled');
       
       // 💾 Klik op 'Create task'

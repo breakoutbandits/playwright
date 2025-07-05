@@ -124,22 +124,39 @@ app.post('/run', (req, res) => {
         await takeScreenshot(page, `task_${i + 1}_loaded`);
 
         // 📝 Vul vraagtekst in (Loquiz label en antwoord)
-        const editor = page.locator('.ql-editor[contenteditable="true"]');
-        await editor.waitFor({ state: 'visible', timeout: 10000 });
-        const newText = `${task.label}\n${task.answer}`;
-        await editor.fill(newText);
-        console.log('📝 Editor gevuld:', newText);
+        if (task.label && task.answer) {
+          const editor = page.locator('.ql-editor[contenteditable="true"]');
+          await editor.waitFor({ state: 'visible', timeout: 10000 });
+          const newText = `${task.label}\n${task.answer}`;
+          await editor.fill(newText);
+          console.log('📝 Editor gevuld:', newText);
+        }
 
         // Vul antwoorden
-        await vulAntwoorden(page, {
-          option1: task.option1,
-          option2: task.option2,
-          option3: task.option3,
-          option4: task.option4
-        });
-        console.log('✅ Antwoorden ingevuld');
-        
-        await takeScreenshot(page, `task_${i + 1}_editor_filled`);
+        if (task.option1){
+          await vulAntwoorden(page, {
+            option1: task.option1,
+            option2: task.option2,
+            option3: task.option3,
+            option4: task.option4
+          });
+          console.log('✅ Antwoorden ingevuld');
+          await takeScreenshot(page, `task_${i + 1}_editor_filled`);
+        }
+
+        // 💬 Voeg commentaar toe als aanwezig
+        if (task.comment && task.comment.trim() !== '') {
+          console.log('💬 Commentaar toevoegen');
+          const commentsButton = page.locator('button:has-text("Comments")');
+          await commentsButton.click();
+          await takeScreenshot(page, `task_${i + 1}_comments_tab`);
+
+          const commentEditor = page.locator('app-html-editor[formcontrolname="correctComment"] .ql-editor[contenteditable="true"]');
+          await commentEditor.waitFor({ state: 'visible', timeout: 10000 });
+          await commentEditor.fill(task.comment);
+          console.log('💬 Comment ingevuld:', task.comment);
+          await takeScreenshot(page, `task_${i + 1}_comment_filled`);
+        }
 
         // 💾 Klik op "Save as copy"
         const saveCopyButton = page.locator('button:has-text("Save as copy")');

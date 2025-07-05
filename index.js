@@ -120,7 +120,10 @@ app.post('/run', (req, res) => {
             }
             if (clicked) {
               break; // breek buitenste loop direct zodra geklikt is
-            }
+            }          
+          }
+          if (clicked) {
+              break; // breek buitenste loop direct zodra geklikt is
           }
         await page.waitForTimeout(1000); // 1 seconde pauze
       }

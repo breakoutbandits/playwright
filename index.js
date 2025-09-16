@@ -133,7 +133,7 @@ app.post('/run', (req, res) => {
         }
 
         // Vul antwoorden
-        if (task.option1){
+        if (task.answer_good_name){
           await vulAntwoorden(page, {
             option1: task.answer_good_name,
             option2: task.answer_wrong1_name,

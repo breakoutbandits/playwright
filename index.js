@@ -135,10 +135,10 @@ app.post('/run', (req, res) => {
         // Vul antwoorden
         if (task.option1){
           await vulAntwoorden(page, {
-            option1: task.option1,
-            option2: task.option2,
-            option3: task.option3,
-            option4: task.option4
+            option1: task.answer_good_name,
+            option2: task.answer_wrong1_name,
+            option3: task.answer_wrong2_name,
+            option4: task.answer_wrong3_name
           });
           console.log('✅ Antwoorden ingevuld');
           await takeScreenshot(page, `task_${i + 1}_editor_filled`);

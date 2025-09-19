@@ -19,46 +19,62 @@ async function takeScreenshot(page, name) {
   console.log(`📸 Screenshot opgeslagen als: ${filePath}`);
 }
 
-// Antwoorden invullen functie
-async function vulAntwoorden(page, options) {
-  const { option1, option2, option3, option4 } = options;
+// Antwoorden invullen / vervangen o.b.v. placeholders in Loquiz
+async function vulAntwoorden(page, { option1, option2, option3, option4 }) {
+  // Wacht tot het answers-component zichtbaar is (maakt de functie robuuster)
+  try {
+    await page.locator('app-answers-input, [formcontrolname="answers"]').first()
+      .waitFor({ state: 'visible', timeout: 10000 });
+  } catch {
+    console.warn('⚠️ Geen answers-component gevonden — sla vullen van antwoorden over.');
+    return { found: 0, replaced: 0 };
+  }
 
-  const antwoordenVelden = await page.locator('.answers__group').elementHandles();
+  // Map placeholders -> opgegeven opties
+  const mapping = {
+    '%an1': option1,
+    '%an2': option2,
+    '%an3': option3,
+    '%an4': option4,
+  };
 
-  // Index van het correcte antwoordveld bepalen
-  let correctIndex = -1;
-  for (let i = 0; i < antwoordenVelden.length; i++) {
-    const veld = antwoordenVelden[i];
-    const html = await veld.innerHTML();
-    if (html.includes('Correct')) {
-      correctIndex = i;
-      break;
+  // Pak alle tekst-inputs binnen de antwoordgroepen
+  const inputs = page.locator('.answers__group input[type="text"]');
+  const count = await inputs.count();
+  console.log(`🧩 Antwoorden gevonden: ${count}`);
+
+  let replaced = 0;
+
+  for (let i = 0; i < count; i++) {
+    const input = inputs.nth(i);
+    try {
+      // huidige value lezen (géén placeholder attribute)
+      const current = (await input.inputValue()).trim();
+
+      // Alleen vervangen als de value exact een bekende placeholder is
+      if (Object.prototype.hasOwnProperty.call(mapping, current)) {
+        const newValue = mapping[current];
+
+        if (newValue && `${newValue}`.trim().length > 0) {
+          await input.fill(newValue);
+          console.log(`✅ Veld ${i + 1}: "${current}" → "${newValue}"`);
+          replaced++;
+        } else {
+          console.log(`⏭️  Veld ${i + 1}: "${current}" niet vervangen (ontbrekende/lege optie).`);
+        }
+      } else {
+        console.log(`🔎 Veld ${i + 1}: geen placeholder gevonden (waarde="${current}") — laten staan.`);
+      }
+    } catch (err) {
+      console.warn(`⚠️ Kon veld ${i + 1} niet verwerken:`, err);
+      // ga door met de rest
     }
   }
 
-  if (correctIndex === -1) {
-    console.warn('⚠️ Geen veld gevonden met "Correct" status');
-    return;
-  }
-
-  const opties = [option2, option3, option4];
-  for (let i = opties.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [opties[i], opties[j]] = [opties[j], opties[i]];
-  }
-
-  for (let i = 0; i < antwoordenVelden.length; i++) {
-    const input = await antwoordenVelden[i].$('input[type="text"]');
-    if (!input) continue;
-
-    if (i === correctIndex) {
-      await input.fill(option1);
-    } else {
-      const optie = opties.shift();
-      if (optie) await input.fill(optie);
-    }
-  }
+  console.log(`📊 Samenvatting: ${replaced}/${count} velden vervangen op basis van placeholders.`);
+  return { found: count, replaced };
 }
+
 
 // Main route
 app.post('/run', (req, res) => {

@@ -11,13 +11,13 @@ const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
 // Helper om screenshots te maken
-async function takeScreenshot(page, name) {
-  const dir = path.join(__dirname, 'screenshots');
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-  const filePath = path.join(dir, `${name}.png`);
-  await page.screenshot({ path: filePath, fullPage: true });
-  console.log(`📸 Screenshot opgeslagen als: ${filePath}`);
-}
+//async function takeScreenshot(page, name) {
+//  const dir = path.join(__dirname, 'screenshots');
+//  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+//  const filePath = path.join(dir, `${name}.png`);
+//  await page.screenshot({ path: filePath, fullPage: true });
+//  console.log(`📸 Screenshot opgeslagen als: ${filePath}`);
+//}
 
 // Antwoorden invullen / vervangen o.b.v. placeholders in Loquiz
 async function vulAntwoorden(page, { option1, option2, option3, option4 }) {
@@ -113,7 +113,7 @@ app.post('/run', (req, res) => {
       const page = await browser.newPage();
       console.log('🌐 Ga naar inlogpagina...');
       await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
-      await takeScreenshot(page, '01_login_page_loaded');
+      //await takeScreenshot(page, '01_login_page_loaded');
 
       console.log('🔐 Inloggen...');
       const emailField = page.locator('app-input[formcontrolname="email"] input');
@@ -129,7 +129,7 @@ app.post('/run', (req, res) => {
       // ✅ Wacht op navigatie naar dashboard
       await page.waitForNavigation({ waitUntil: 'networkidle' });
       console.log('✅ Ingelogd');
-      await takeScreenshot(page, '02_after_login');
+      //await takeScreenshot(page, '02_after_login');
       
       // 📂 Verwerk alle tasks
       for (const [i, task] of tasks.entries()) {
@@ -137,7 +137,7 @@ app.post('/run', (req, res) => {
         const url = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
         console.log('📄 Open URL:', url);
         await page.goto(url, { waitUntil: 'networkidle' });
-        await takeScreenshot(page, `task_${i + 1}_loaded`);
+        //await takeScreenshot(page, `task_${i + 1}_loaded`);
 
         // 📝 Vul vraagtekst in (Loquiz label en antwoord)
         if (task.content) {
@@ -157,7 +157,7 @@ app.post('/run', (req, res) => {
             option4: task.answer_wrong3_name
           });
           console.log('✅ Antwoorden ingevuld');
-          await takeScreenshot(page, `task_${i + 1}_editor_filled`);
+          //await takeScreenshot(page, `task_${i + 1}_editor_filled`);
         }
 
         // 💬 Voeg commentaar toe als aanwezig
@@ -165,13 +165,13 @@ app.post('/run', (req, res) => {
           console.log('💬 Commentaar toevoegen');
           const commentsButton = page.locator('button:has-text("Comments")');
           await commentsButton.click();
-          await takeScreenshot(page, `task_${i + 1}_comments_tab`);
+          //await takeScreenshot(page, `task_${i + 1}_comments_tab`);
 
           const commentEditor = page.locator('app-html-editor[formcontrolname="correctComment"] .ql-editor[contenteditable="true"]');
           await commentEditor.waitFor({ state: 'visible', timeout: 10000 });
           await commentEditor.fill(task.comment);
           console.log('💬 Comment ingevuld:', task.comment);
-          await takeScreenshot(page, `task_${i + 1}_comment_filled`);
+          //await takeScreenshot(page, `task_${i + 1}_comment_filled`);
         }
 
         // 💾 Klik op "Save as copy"
@@ -179,7 +179,7 @@ app.post('/run', (req, res) => {
         await saveCopyButton.waitFor({ state: 'visible', timeout: 10000 });
         await saveCopyButton.click();
         console.log('💾 Save as copy geklikt');
-        await takeScreenshot(page, `task_${i + 1}_save_copy`);
+        //await takeScreenshot(page, `task_${i + 1}_save_copy`);
 
         // ✅ Wacht op dialoogafsluiting
         await page.waitForTimeout(1000);
@@ -197,7 +197,7 @@ app.post('/run', (req, res) => {
             if (className.includes('btn-success') && text === '4. Save') {
               await btn.click();
               console.log('✅ Eind-save uitgevoerd');
-              await takeScreenshot(page, `task_${i + 1}_final_save`);
+              //await takeScreenshot(page, `task_${i + 1}_final_save`);
               clicked = true;
               break;
             }
@@ -207,7 +207,7 @@ app.post('/run', (req, res) => {
         }
 
         if (!clicked) {
-          await takeScreenshot(page, `task_${i + 1}_save_not_found`);
+          //await takeScreenshot(page, `task_${i + 1}_save_not_found`);
           throw new Error(`❌ Eind-saveknop niet gevonden voor taak ${task.task_id}`);
         }
       }

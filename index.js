@@ -290,7 +290,7 @@ app.post('/run', (req, res) => {
         } else {
           console.log('✅ Placeholder-check OK — alle placeholders zijn vervangen.');
       
-          // 🔁 Terugkoppeling naar WordPress (zoals je al deed)
+          // 🔁 Terugkoppeling naar WordPress
           console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
           console.log('➡️ Payload:', JSON.stringify({ entry_id }));
           const callbackResponse = await fetch(webhook_url, {

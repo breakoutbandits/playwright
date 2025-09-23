@@ -43,7 +43,7 @@ async function sendWarningViaBrevoAPI({ subject, html }) {
 
 // ========= Placeholder-check op /results =========
 async function checkResultsPlaceholders(page, gameId) {
-  const url = `https://results.loquiz.com/${gameId}/results`;
+  const url = `https://results.loquiz.com/${gameId}/answers`;
   console.log('🔎 Placeholder-check op:', url);
 
   // ga naar de pagina en wacht tot hij helemaal geladen is
@@ -308,7 +308,7 @@ app.post('/run', (req, res) => {
       
           const html = `
             <p>Na het verwerken van de taken zijn er nog placeholders aangetroffen op
-            <a href="https://results.loquiz.com/${game_id}/results" target="_blank" rel="noreferrer">results.loquiz.com/${game_id}/results</a>:</p>
+            <a href="https://results.loquiz.com/${game_id}/answers" target="_blank" rel="noreferrer">results.loquiz.com/${game_id}/answers</a>:</p>
             <ul>${itemsHtml}</ul>
             <p>Graag controleren en opnieuw draaien.</p>
           `;

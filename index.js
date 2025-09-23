@@ -43,7 +43,7 @@ async function sendWarningViaBrevoAPI({ subject, html }) {
 
 // ---- Placeholder-check via HTTP GET
 async function checkResultsForPlaceholders(gameId) {
-  const url = `https://results.loquiz.com/${gameId}`;
+  const url = `https://results.loquiz.com/${gameId}/answers`;
   console.log('🔎 Placeholder-check op:', url);
 
   // haal de pagina op

@@ -41,27 +41,46 @@ async function sendWarningViaBrevoAPI({ subject, html }) {
   console.log('📧 Brevo API send ok:', body);
 }
 
-// ---- Placeholder-check via HTTP GET
-async function checkResultsForPlaceholders(gameId) {
-  const url = `https://results.loquiz.com/${gameId}/answers`;
+// ========= Placeholder-check op /results =========
+async function checkResultsPlaceholders(page, gameId) {
+  const url = `https://results.loquiz.com/${gameId}/results`;
   console.log('🔎 Placeholder-check op:', url);
 
-  // haal de pagina op
-  const r = await fetch(url, { method: 'GET' });
-  const html = await r.text();
+  // ga naar de pagina en wacht tot hij helemaal geladen is
+  await page.goto(url, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600); // korte pauze zodat JS klaar is
+
+  // haal de GERENDERDE DOM op
+  const html = await page.content();
 
   // lijst met te controleren placeholders
   const keys = ['%q','%a1','%an1','%a2','%an2','%a3','%an3','%a4','%an4','%g'];
 
-  // vind welke nog aanwezig zijn
   const found = [];
   for (const k of keys) {
-    const re = new RegExp(k.replace('%','%').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); // escape
-    if (re.test(html)) found.push(k);
+    let idx = html.indexOf(k);
+    if (idx !== -1) {
+      // context rondom de placeholder pakken
+      const start = Math.max(0, idx - 80);
+      const end   = Math.min(html.length, idx + k.length + 80);
+      const context = html.slice(start, end).replace(/\s+/g, ' ');
+      found.push({ placeholder: k, context });
+    }
   }
 
-  return { ok: found.length === 0, found, sample: html.slice(0, 1500) };
+  const ok = found.length === 0;
+  if (ok) {
+    console.log('✅ Geen placeholders meer gevonden');
+  } else {
+    console.warn('⚠️ Nog gevonden placeholders:');
+    for (const f of found) {
+      console.warn(`- ${f.placeholder} ...context: "${f.context}"`);
+    }
+  }
+
+  return { ok, found };
 }
+
 
 // Helper om screenshots te maken
 //async function takeScreenshot(page, name) {
@@ -267,25 +286,36 @@ app.post('/run', (req, res) => {
 
       // ✅ Alle tasks verwerkt — nu placeholder-check doen vóór WP-callback
       try {
-        const { ok, found, sample } = await checkResultsForPlaceholders(game_id);
+        const { ok, found } = await checkResultsPlaceholders(page, game_id);
       
         if (!ok) {
-          console.warn('⚠️ Placeholder-check FAALT. Niet-vervangen placeholders:', found);
+          console.warn('⚠️ Placeholder-check FAALT. Niet-vervangen placeholders gevonden.');
       
-          // stuur waarschuwing via Brevo
+          // simpele HTML-escape voor de mail
+          const esc = (s) => String(s).replace(/[&<>]/g, (c) => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]
+          ));
+      
           const subject = `⚠️ Warning: Loquiz game ${game_id} niet goed geconfigureerd!`;
+          const itemsHtml = found.map(f => (
+            `<li style="margin-bottom:10px">
+               <code>${esc(f.placeholder)}</code>
+               <div style="font-family:monospace;background:#f6f8fa;padding:10px;border-radius:6px;white-space:nowrap;overflow:auto">
+                 ${esc(f.context)}
+               </div>
+             </li>`
+          )).join('');
+      
           const html = `
-            <p>Na het verwerken van de taken zijn de volgende placeholders nog aangetroffen op
-            <a href="https://results.loquiz.com/${game_id}/results">https://results.loquiz.com/${game_id}/results</a>:</p>
-            <pre style="background:#f6f8fa;padding:12px;border-radius:6px">${found.join(', ')}</pre>
-            <p>HTML-snippet (eerste 1500 chars) ter diagnose:</p>
-            <pre style="background:#f6f8fa;padding:12px;border-radius:6px;white-space:pre-wrap">${sample
-              .replace(/</g,'&lt;')
-              .replace(/>/g,'&gt;')}</pre>            
+            <p>Na het verwerken van de taken zijn er nog placeholders aangetroffen op
+            <a href="https://results.loquiz.com/${game_id}/results" target="_blank" rel="noreferrer">results.loquiz.com/${game_id}/results</a>:</p>
+            <ul>${itemsHtml}</ul>
+            <p>Graag controleren en opnieuw draaien.</p>
           `;
+      
           await sendWarningViaBrevoAPI({ subject, html });
       
-          // We sturen GEEN WP-callback bij failure:
+          // ❌ Bij failure géén WP-callback sturen
           console.warn('⏹ WP-callback overgeslagen vanwege placeholder-fouten.');
         } else {
           console.log('✅ Placeholder-check OK — alle placeholders zijn vervangen.');
@@ -293,11 +323,13 @@ app.post('/run', (req, res) => {
           // 🔁 Terugkoppeling naar WordPress
           console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
           console.log('➡️ Payload:', JSON.stringify({ entry_id }));
+      
           const callbackResponse = await fetch(webhook_url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ entry_id })
           });
+      
           const text = await callbackResponse.text();
           console.log(`✅ WordPress response (${callbackResponse.status}):`, text);
       
@@ -307,8 +339,9 @@ app.post('/run', (req, res) => {
         }
       } catch (e) {
         console.error('❌ Fout tijdens placeholder-check / e-mail:', e);
-        // Optioneel: als e-mail ook faalt, kun je hier alsnog WP-callback proberen of extra logging doen.
+        // Optioneel: hier kun je alsnog een WP-callback proberen of extra logging doen.
       }
+
 
       
       } catch (err) {

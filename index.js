@@ -276,7 +276,7 @@ app.post('/run', (req, res) => {
           const subject = `⚠️ Warning: Loquiz game ${game_id} niet goed geconfigureerd!`;
           const html = `
             <p>Na het verwerken van de taken zijn de volgende placeholders nog aangetroffen op
-            <a href="https://results.loquiz.com/${game_id}">https://results.loquiz.com/${game_id}</a>:</p>
+            <a href="https://results.loquiz.com/${game_id}/results">https://results.loquiz.com/${game_id}/results</a>:</p>
             <pre style="background:#f6f8fa;padding:12px;border-radius:6px">${found.join(', ')}</pre>
             <p>HTML-snippet (eerste 1500 chars) ter diagnose:</p>
             <pre style="background:#f6f8fa;padding:12px;border-radius:6px;white-space:pre-wrap">${sample

@@ -10,6 +10,59 @@ const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
+// ---- Brevo API mailer (geen Nodemailer nodig)
+async function sendWarningViaBrevoAPI({ subject, html }) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    console.error('❌ BREVO_API_KEY ontbreekt');
+    throw new Error('BREVO_API_KEY ontbreekt');
+  }
+
+  const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey,
+    },
+    body: JSON.stringify({
+      sender: { email: process.env.ALERT_FROM || 'info@breakoutbandits.com', name: 'Breakout Bandits' },
+      to: [{ email: process.env.ALERT_TO || 'info@breakoutbandits.com', name: 'Ops' }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  const body = await resp.text();
+  if (!resp.ok) {
+    console.error('❌ Brevo API send failed:', resp.status, body);
+    throw new Error(`Brevo API error ${resp.status}`);
+  }
+  console.log('📧 Brevo API send ok:', body);
+}
+
+// ---- Placeholder-check via HTTP GET
+async function checkResultsForPlaceholders(gameId) {
+  const url = `https://results.loquiz.com/${gameId}`;
+  console.log('🔎 Placeholder-check op:', url);
+
+  // haal de pagina op
+  const r = await fetch(url, { method: 'GET' });
+  const html = await r.text();
+
+  // lijst met te controleren placeholders
+  const keys = ['%q','%a1','%an1','%a2','%an2','%a3','%an3','%a4','%an4','%g'];
+
+  // vind welke nog aanwezig zijn
+  const found = [];
+  for (const k of keys) {
+    const re = new RegExp(k.replace('%','%').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); // escape
+    if (re.test(html)) found.push(k);
+  }
+
+  return { ok: found.length === 0, found, sample: html.slice(0, 1500) };
+}
+
 // Helper om screenshots te maken
 //async function takeScreenshot(page, name) {
 //  const dir = path.join(__dirname, 'screenshots');
@@ -212,21 +265,51 @@ app.post('/run', (req, res) => {
         }
       }
 
-      // ✅ Koppel terug naar WordPress
-      console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
-      console.log('➡️ Payload:', JSON.stringify({ entry_id }));
-      const callbackResponse = await fetch(webhook_url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entry_id })
-      });
+      // ✅ Alle tasks verwerkt — nu placeholder-check doen vóór WP-callback
+      try {
+        const { ok, found, sample } = await checkResultsForPlaceholders(game_id);
       
-        const text = await callbackResponse.text();
-        console.log(`✅ WordPress response (${callbackResponse.status}):`, text);
-
-        if (!callbackResponse.ok) {
-          throw new Error(`❌ WP callback mislukt met status ${callbackResponse.status}`);
+        if (!ok) {
+          console.warn('⚠️ Placeholder-check FAALT. Niet-vervangen placeholders:', found);
+      
+          // stuur waarschuwing via Brevo
+          const subject = `⚠️ Warning: Loquiz game ${game_id} niet goed geconfigureerd!`;
+          const html = `
+            <p>Na het verwerken van de taken zijn de volgende placeholders nog aangetroffen op
+            <a href="https://results.loquiz.com/${game_id}">https://results.loquiz.com/${game_id}</a>:</p>
+            <pre style="background:#f6f8fa;padding:12px;border-radius:6px">${found.join(', ')}</pre>
+            <p>HTML-snippet (eerste 1500 chars) ter diagnose:</p>
+            <pre style="background:#f6f8fa;padding:12px;border-radius:6px;white-space:pre-wrap">${sample
+              .replace(/</g,'&lt;')
+              .replace(/>/g,'&gt;')}</pre>            
+          `;
+          await sendWarningViaBrevoAPI({ subject, html });
+      
+          // We sturen GEEN WP-callback bij failure:
+          console.warn('⏹ WP-callback overgeslagen vanwege placeholder-fouten.');
+        } else {
+          console.log('✅ Placeholder-check OK — alle placeholders zijn vervangen.');
+      
+          // 🔁 Terugkoppeling naar WordPress (zoals je al deed)
+          console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
+          console.log('➡️ Payload:', JSON.stringify({ entry_id }));
+          const callbackResponse = await fetch(webhook_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entry_id })
+          });
+          const text = await callbackResponse.text();
+          console.log(`✅ WordPress response (${callbackResponse.status}):`, text);
+      
+          if (!callbackResponse.ok) {
+            throw new Error(`❌ WP callback mislukt met status ${callbackResponse.status}`);
+          }
         }
+      } catch (e) {
+        console.error('❌ Fout tijdens placeholder-check / e-mail:', e);
+        // Optioneel: als e-mail ook faalt, kun je hier alsnog WP-callback proberen of extra logging doen.
+      }
+
       
       } catch (err) {
         console.error('❌ Fout tijdens uitvoeren:', err);
@@ -239,14 +322,14 @@ app.post('/run', (req, res) => {
   })();
 });
 
-app.get('/screenshot/:name', (req, res) => {
-  const file = path.join(__dirname, 'screenshots', `${req.params.name}.png`);
-  if (fs.existsSync(file)) {
-    res.sendFile(file);
-  } else {
-    res.status(404).send('Screenshot niet gevonden');
-  }
-});
+//app.get('/screenshot/:name', (req, res) => {
+//  const file = path.join(__dirname, 'screenshots', `${req.params.name}.png`);
+//  if (fs.existsSync(file)) {
+//    res.sendFile(file);
+//  } else {
+//    res.status(404).send('Screenshot niet gevonden');
+//  }
+//});
 
 app.get('/', (req, res) => {
   res.send('👋 Hello!');

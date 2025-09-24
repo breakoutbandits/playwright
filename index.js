@@ -46,9 +46,14 @@ async function checkResultsPlaceholders(page, gameId) {
   const url = `https://results.loquiz.com/${gameId}/answers`;
   console.log('🔎 Placeholder-check op:', url);
 
-  // ga naar de pagina en wacht tot hij helemaal geladen is
-  await page.goto(url, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(600); // korte pauze zodat JS klaar is
+  page.setDefaultNavigationTimeout(60000);
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+
+  // Wacht expliciet tot de UI gerenderd is: <div class="container container--fluid">
+  await page.waitForSelector('.container.container--fluid', { state: 'visible', timeout: 45000 });
+
+  // Korte ademruimte voor eventueel laatste client-side render
+  await page.waitForTimeout(500);
 
   // haal de GERENDERDE DOM op
   const html = await page.content();

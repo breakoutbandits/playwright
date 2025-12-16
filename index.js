@@ -59,7 +59,7 @@ async function checkResultsPlaceholders(page, gameId) {
   const html = await page.content();
 
   // lijst met te controleren placeholders
-  const keys = ['%q','%a1','%an1','%a2','%an2','%a3','%an3','%a4','%an4','%g'];
+  const keys = ['%q','%a1','%an1','%a2','%an2','%a3','%an3','%a4','%an4','%g','%s1','%s2','%s3','%s4'];
 
   const found = [];
   for (const k of keys) {
@@ -226,7 +226,16 @@ app.post('/run', (req, res) => {
         }
 
         // Vul antwoorden
-        if (task.answer_good_name){
+        if (task.answers_same == 'Yes'){
+          await vulAntwoorden(page, {
+            option1: task.static_multiple_choice_answer_good,
+            option2: task.static_multiple_choice_answer_wrong1,
+            option3: task.static_multiple_choice_answer_wrong2,
+            option4: task.static_multiple_choice_answer_wrong3
+          });
+          console.log('✅ Statische antwoorden ingevuld voor allemaal zelfde antwoorden ');
+          //await takeScreenshot(page, `task_${i + 1}_editor_filled`);
+        } else {
           await vulAntwoorden(page, {
             option1: task.answer_good_name,
             option2: task.answer_wrong1_name,

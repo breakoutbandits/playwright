@@ -109,10 +109,10 @@ async function vulAntwoorden(page, { option1, option2, option3, option4 }) {
 
   // Map placeholders -> opgegeven opties
   const mapping = {
-    '%an1': option1,
-    '%an2': option2,
-    '%an3': option3,
-    '%an4': option4,
+    '%an1': decodeHtmlEntities(option1),
+    '%an2': decodeHtmlEntities(option2),
+    '%an3': decodeHtmlEntities(option3),
+    '%an4': decodeHtmlEntities(option4),
   };
 
   // Pak alle tekst-inputs binnen de antwoordgroepen
@@ -152,6 +152,21 @@ async function vulAntwoorden(page, { option1, option2, option3, option4 }) {
   return { found: count, replaced };
 }
 
+function decodeHtmlEntities(str) {
+  if (typeof str !== 'string' || !str) return str;
+
+  // Decode numeric hex: &#x2764;
+  str = str.replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+    try { return String.fromCodePoint(parseInt(hex, 16)); } catch { return _; }
+  });
+
+  // Decode numeric dec: &#10084;
+  str = str.replace(/&#([0-9]+);/g, (_, dec) => {
+    try { return String.fromCodePoint(parseInt(dec, 10)); } catch { return _; }
+  });
+
+  return str;
+}
 
 // Main route
 app.post('/run', (req, res) => {
@@ -220,7 +235,7 @@ app.post('/run', (req, res) => {
         if (task.content) {
           const editor = page.locator('.ql-editor[contenteditable="true"]');
           await editor.waitFor({ state: 'visible', timeout: 10000 });
-          const newText = `${task.content}`;
+          const newText = decodeHtmlEntities(String(task.content));
           await editor.fill(newText);
           console.log('📝 Editor gevuld:', newText);
         }

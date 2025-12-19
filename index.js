@@ -356,10 +356,36 @@ app.post('/run', (req, res) => {
         // Optioneel: hier kun je alsnog een WP-callback proberen of extra logging doen.
       }
 
-
-      
       } catch (err) {
-        console.error('❌ Fout tijdens uitvoeren:', err);
+        console.error('❌ Fout tijdens uitvoeren:', err);        
+
+        // === Mail via Brevo bij runtime error ===
+        try {
+          const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]
+          ));
+  
+          const subject = `❌ Error in Loquiz Playwright script (game ${game_id}, entry ${entry_id})`;
+  
+          const stack = err?.stack ? String(err.stack) : String(err);
+          const html = `
+            <p><strong>Er is een fout opgetreden tijdens het uitvoeren van het Playwright-script.</strong></p>
+  
+            <p><strong>Entry ID:</strong> ${esc(entry_id)}<br/>
+               <strong>Game ID:</strong> ${esc(game_id)}<br/>
+               <strong>Tasks:</strong> ${Array.isArray(tasks) ? tasks.length : 0}</p>
+  
+            <p><strong>Error message:</strong></p>
+            <pre style="font-family:monospace;background:#f6f8fa;padding:12px;border-radius:8px;white-space:pre-wrap;overflow:auto">${esc(stack)}</pre>
+  
+            <p><strong>Webhook URL:</strong> ${esc(webhook_url || '')}</p>
+          `;
+  
+          await sendWarningViaBrevoAPI({ subject, html });
+        } catch (mailErr) {
+          console.error('❌ Kon error-mail via Brevo niet versturen:', mailErr);
+        }
+      
       } finally {
       if (browser) {
         await browser.close();

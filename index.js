@@ -296,6 +296,7 @@ app.post('/run', (req, res) => {
           //await takeScreenshot(page, `task_${i + 1}_save_not_found`);
           throw new Error(`❌ Eind-saveknop niet gevonden voor taak ${task.task_id}`);
         }
+        await page.waitForTimeout(3000);
       }
 
       // ✅ Alle tasks verwerkt — nu placeholder-check doen vóór WP-callback

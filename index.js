@@ -59,7 +59,7 @@ async function checkResultsPlaceholders(page, gameId) {
   const html = await page.content();
 
   // lijst met te controleren placeholders
-  const keys = ['%q','%a1','%an1','%a2','%an2','%a3','%an3','%a4','%an4','%g','%s1','%s2','%s3','%s4'];
+  const keys = ['%q','%a1','%an1','%a2','%an2','%a3','%an3','%a4','%an4','%g','%check'];
 
   const found = [];
   for (const k of keys) {

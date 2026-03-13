@@ -206,7 +206,8 @@ app.post('/run', (req, res) => {
 
       const page = await browser.newPage();
       console.log('🌐 Ga naar inlogpagina...');
-      await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
+      // DEPRICATED --> await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
+      await page.goto('https://legacy.loquiz.com/login', { waitUntil: 'networkidle' });
       //await takeScreenshot(page, '01_login_page_loaded');
 
       console.log('🔐 Inloggen...');
@@ -228,7 +229,8 @@ app.post('/run', (req, res) => {
       // 📂 Verwerk alle tasks
       for (const [i, task] of tasks.entries()) {
         console.log(`🔁 Taak ${i + 1}/${tasks.length}: ${task.task_id}`);
-        const url = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
+        // DEPRICATED --> const url = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
+        const url = `https://legacy.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
         console.log('📄 Open URL:', url);
         await page.goto(url, { waitUntil: 'networkidle' });
         //await takeScreenshot(page, `task_${i + 1}_loaded`);

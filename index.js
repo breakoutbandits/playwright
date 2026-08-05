@@ -102,7 +102,7 @@ async function checkResultsPlaceholders(page, gameId) {
 async function vulAntwoorden(page, { option1, option2, option3, option4 }) {
   // Wacht tot het answers-component zichtbaar is (maakt de functie robuuster)
   try {
-    await page.locator('app-answers-input, [formcontrolname="answers"]').first()
+    await page.locator('app-dialog-box app-answers-input[formcontrolname="answers"]').last()
       .waitFor({ state: 'visible', timeout: 10000 });
   } catch {
     console.warn('⚠️ Geen answers-component gevonden — sla vullen van antwoorden over.');
@@ -118,7 +118,10 @@ async function vulAntwoorden(page, { option1, option2, option3, option4 }) {
   };
 
   // Pak alle tekst-inputs binnen de antwoordgroepen
-  const inputs = page.locator('.answers__group input[type="text"]');
+  const inputs = page.locator(
+    'app-dialog-box app-answers-input[formcontrolname="answers"] input.input:not([placeholder="Add an answer..."]):not([disabled])'
+  ).last().locator('xpath=..').locator('input.input:not([placeholder="Add an answer..."]):not([disabled])');
+
   const count = await inputs.count();
   console.log(`🧩 Antwoorden gevonden: ${count}`);
 
@@ -206,8 +209,9 @@ app.post('/run', (req, res) => {
 
       const page = await browser.newPage();
       console.log('🌐 Ga naar inlogpagina...');
-      // DEPRICATED --> await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
-      await page.goto('https://legacy.loquiz.com/login', { waitUntil: 'networkidle' });
+      // DEPRICATED initial code --> await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
+      // DEPRICATED legacy creator --> await page.goto('https://legacy.loquiz.com/login', { waitUntil: 'networkidle' });
+      await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
       //await takeScreenshot(page, '01_login_page_loaded');
 
       console.log('🔐 Inloggen...');
@@ -229,15 +233,22 @@ app.post('/run', (req, res) => {
       // 📂 Verwerk alle tasks
       for (const [i, task] of tasks.entries()) {
         console.log(`🔁 Taak ${i + 1}/${tasks.length}: ${task.task_id}`);
-        // DEPRICATED --> const url = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
-        const url = `https://legacy.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
+        // DEPRICATED initial code --> const url = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
+        // DEPRICATED legacy creator --> const url = `https://legacy.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
+        const url = `https://creator.loquiz.com/games/edit/${game_id}/creator?task=${task.task_id}`;
         console.log('📄 Open URL:', url);
         await page.goto(url, { waitUntil: 'networkidle' });
         //await takeScreenshot(page, `task_${i + 1}_loaded`);
 
+        // Wacht tot de nieuwe taakdialoog zichtbaar is
+        const taskDialog = page.locator('app-dialog-box').last();
+        await taskDialog.waitFor({ state: 'visible', timeout: 30000 });
+
         // 📝 Vul vraagtekst in (Loquiz label en antwoord)
         if (task.content) {
-          const editor = page.locator('.ql-editor[contenteditable="true"]');
+          const editor = taskDialog.locator(
+            'app-html-editor[formcontrolname="text"] .ql-editor[contenteditable="true"]'
+          );
           await editor.waitFor({ state: 'visible', timeout: 10000 });
           const newText = decodeHtmlEntities(String(task.content));
           await editor.fill(newText);
@@ -268,11 +279,16 @@ app.post('/run', (req, res) => {
         // 💬 Voeg commentaar toe als aanwezig
         if (task.comment && task.comment.trim() !== '') {
           console.log('💬 Commentaar toevoegen');
-          const commentsButton = page.locator('button:has-text("Comments")');
+          const commentsButton = taskDialog.getByRole('tab', {
+            name: 'Comments',
+            exact: true
+          });
           await commentsButton.click();
           //await takeScreenshot(page, `task_${i + 1}_comments_tab`);
 
-          const commentEditor = page.locator('app-html-editor[formcontrolname="correctComment"] .ql-editor[contenteditable="true"]');
+          const commentEditor = taskDialog.locator(
+            'app-html-editor[formcontrolname="correctComment"] .ql-editor[contenteditable="true"]'
+          );
           await commentEditor.waitFor({ state: 'visible', timeout: 10000 });
           await commentEditor.fill(task.comment);
           console.log('💬 Comment ingevuld:', task.comment);
@@ -280,41 +296,34 @@ app.post('/run', (req, res) => {
         }
 
         // 💾 Klik op "Save as copy"
-        const saveCopyButton = page.locator('button:has-text("Save as copy")');
+        const saveCopyButton = taskDialog
+          .locator('app-dialog-box-footer')
+          .getByRole('button', {
+            name: 'Save as copy',
+            exact: true
+          });
+
         await saveCopyButton.waitFor({ state: 'visible', timeout: 10000 });
         await saveCopyButton.click();
         console.log('💾 Save as copy geklikt');
         //await takeScreenshot(page, `task_${i + 1}_save_copy`);
 
         // ✅ Wacht op dialoogafsluiting
-        await page.waitForTimeout(1000);
+        await taskDialog.waitFor({ state: 'hidden', timeout: 30000 });
 
-        // 🔍 Zoek de juiste "4. Save"-knop
-        let clicked = false;
-        for (let j = 0; j < 30; j++) {
-          const buttons = await page.$$('a.btn');
-          console.log(`🔍 Poging ${j}: ${buttons.length} knoppen gevonden`);
-          for (const btn of buttons) {
-            const text = (await btn.textContent())?.trim();
-            const className = await btn.getAttribute('class');
-            console.log(`🔘 class="${className}", tekst="${text}"`);
+        // 🔍 Zoek de nieuwe "Save"-knop
+        const finalSaveButton = page
+          .locator('.navbar .navbar-end')
+          .getByRole('button', {
+            name: 'Save',
+            exact: true
+          });
 
-            if (className.includes('btn-success') && text === '4. Save') {
-              await btn.click();
-              console.log('✅ Eind-save uitgevoerd');
-              //await takeScreenshot(page, `task_${i + 1}_final_save`);
-              clicked = true;
-              break;
-            }
-          }
-          if (clicked) break;
-          await page.waitForTimeout(1000);
-        }
+        await finalSaveButton.waitFor({ state: 'visible', timeout: 10000 });
+        await finalSaveButton.click();
+        console.log('✅ Eind-save uitgevoerd');
+        //await takeScreenshot(page, `task_${i + 1}_final_save`);
 
-        if (!clicked) {
-          //await takeScreenshot(page, `task_${i + 1}_save_not_found`);
-          throw new Error(`❌ Eind-saveknop niet gevonden voor taak ${task.task_id}`);
-        }
         await page.waitForTimeout(3000);
       }
 

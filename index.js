@@ -101,8 +101,12 @@ async function checkResultsPlaceholders(page, gameId) {
 // Antwoorden invullen / vervangen o.b.v. placeholders in Loquiz
 async function vulAntwoorden(page, { option1, option2, option3, option4 }) {
   // Wacht tot het answers-component zichtbaar is (maakt de functie robuuster)
+  const answersComponent = page.locator(
+    'app-dialog-box app-answers-input[formcontrolname="answers"]'
+  ).last();
+
   try {
-    await page.locator('app-dialog-box app-answers-input[formcontrolname="answers"]').last()
+    await answersComponent
       .waitFor({ state: 'visible', timeout: 10000 });
   } catch {
     console.warn('⚠️ Geen answers-component gevonden — sla vullen van antwoorden over.');
@@ -118,9 +122,9 @@ async function vulAntwoorden(page, { option1, option2, option3, option4 }) {
   };
 
   // Pak alle tekst-inputs binnen de antwoordgroepen
-  const inputs = page.locator(
-    'app-dialog-box app-answers-input[formcontrolname="answers"] input.input:not([placeholder="Add an answer..."]):not([disabled])'
-  ).last().locator('xpath=..').locator('input.input:not([placeholder="Add an answer..."]):not([disabled])');
+  const inputs = answersComponent.locator(
+    'input.input:not([placeholder="Add an answer..."]):not([disabled])'
+  );
 
   const count = await inputs.count();
   console.log(`🧩 Antwoorden gevonden: ${count}`);
@@ -240,16 +244,17 @@ app.post('/run', (req, res) => {
         await page.goto(url, { waitUntil: 'networkidle' });
         //await takeScreenshot(page, `task_${i + 1}_loaded`);
 
-        // Wacht tot de nieuwe taakdialoog zichtbaar is
+        // ✅ Wacht tot de nieuwe taakdialoog zichtbaar is
         const taskDialog = page.locator('app-dialog-box').last();
         await taskDialog.waitFor({ state: 'visible', timeout: 30000 });
+        console.log('✅ Taakdialoog geopend');
 
         // 📝 Vul vraagtekst in (Loquiz label en antwoord)
         if (task.content) {
           const editor = taskDialog.locator(
             'app-html-editor[formcontrolname="text"] .ql-editor[contenteditable="true"]'
           );
-          await editor.waitFor({ state: 'visible', timeout: 10000 });
+          await editor.waitFor({ state: 'visible', timeout: 30000 });
           const newText = decodeHtmlEntities(String(task.content));
           await editor.fill(newText);
           console.log('📝 Editor gevuld:', newText);
@@ -309,22 +314,54 @@ app.post('/run', (req, res) => {
         //await takeScreenshot(page, `task_${i + 1}_save_copy`);
 
         // ✅ Wacht op dialoogafsluiting
-        await taskDialog.waitFor({ state: 'hidden', timeout: 30000 });
+        await taskDialog.waitFor({
+          state: 'hidden',
+          timeout: 30000
+        });
+
+        console.log('✅ Dialoog gesloten na Save as copy');
+
+        // ✅ Wacht tot de Creator na "Save as copy" weer volledig zichtbaar is
+        await page.locator('.navbar-end').waitFor({
+          state: 'visible',
+          timeout: 30000
+        });
 
         // 🔍 Zoek de nieuwe "Save"-knop
-        const finalSaveButton = page
-          .locator('.navbar .navbar-end')
-          .getByRole('button', {
-            name: 'Save',
-            exact: true
-          });
+        const finalSaveButton = page.locator(
+          '.navbar-end button.btn-primary:has-text("Save")'
+        );
 
-        await finalSaveButton.waitFor({ state: 'visible', timeout: 10000 });
+        await finalSaveButton.waitFor({
+          state: 'visible',
+          timeout: 30000
+        });
+
+        // ✅ Wacht totdat de Save-knop daadwerkelijk klikbaar is
+        await page.waitForFunction(() => {
+          const button = [...document.querySelectorAll('.navbar-end button.btn-primary')]
+            .find(btn => btn.textContent.trim() === 'Save');
+
+          return button && !button.disabled;
+        }, null, { timeout: 30000 });
+
+        console.log('💾 Eind-saveknop is beschikbaar');
+
         await finalSaveButton.click();
+
         console.log('✅ Eind-save uitgevoerd');
         //await takeScreenshot(page, `task_${i + 1}_final_save`);
 
-        await page.waitForTimeout(3000);
+        // ✅ Wacht op bevestiging dat Loquiz klaar is met opslaan.
+        // Na succesvolle save wordt de knop disabled.
+        await page.waitForFunction(() => {
+          const button = [...document.querySelectorAll('.navbar-end button.btn-primary')]
+            .find(btn => btn.textContent.trim() === 'Save');
+
+          return button && button.disabled;
+        }, null, { timeout: 30000 });
+
+        console.log('✅ Save bevestigd door Loquiz');
       }
 
       // ✅ Alle tasks verwerkt — nu placeholder-check doen vóór WP-callback

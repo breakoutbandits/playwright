@@ -211,215 +211,280 @@ app.post('/run', (req, res) => {
 
       console.log('🌐 Chromium succesvol gestart');
 
-      const page = await browser.newPage();
+      // =========================================================
+      // MEMORY FIX:
+      // Eerst één keer inloggen in een aparte BrowserContext.
+      // Daarna bewaren we de loginstatus en sluiten deze context.
+      // =========================================================
+
+      const loginContext = await browser.newContext();
+      const loginPage = await loginContext.newPage();
+
       console.log('🌐 Ga naar inlogpagina...');
       // DEPRICATED initial code --> await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
       // DEPRICATED legacy creator --> await page.goto('https://legacy.loquiz.com/login', { waitUntil: 'networkidle' });
-      await page.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
+      await loginPage.goto('https://creator.loquiz.com/login', { waitUntil: 'networkidle' });
       //await takeScreenshot(page, '01_login_page_loaded');
 
       console.log('🔐 Inloggen...');
-      const emailField = page.locator('app-input[formcontrolname="email"] input');
-      const passwordField = page.locator('app-input[formcontrolname="password"] input');
+      const emailField = loginPage.locator('app-input[formcontrolname="email"] input');
+      const passwordField = loginPage.locator('app-input[formcontrolname="password"] input');
       
       await emailField.waitFor({ state: 'visible', timeout: 10000 });
       await passwordField.waitFor({ state: 'visible', timeout: 10000 });
       
       await emailField.fill(username);
       await passwordField.fill(password);
-      await page.click('button[type="submit"]');
+      await loginPage.click('button[type="submit"]');
 
       // ✅ Wacht op navigatie naar dashboard
-      await page.waitForNavigation({ waitUntil: 'networkidle' });
+      await loginPage.waitForNavigation({ waitUntil: 'networkidle' });
       console.log('✅ Ingelogd');
       //await takeScreenshot(page, '02_after_login');
-      
+
+      // Bewaar cookies + localStorage van de ingelogde Loquiz sessie
+      const storageState = await loginContext.storageState();
+
+      // Login-context is niet meer nodig
+      await loginContext.close();
+      console.log('🧹 Login-context gesloten');
+
       // 📂 Verwerk alle tasks
       for (const [i, task] of tasks.entries()) {
-        console.log(`🔁 Taak ${i + 1}/${tasks.length}: ${task.task_id}`);
-        // DEPRICATED initial code --> const url = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
-        // DEPRICATED legacy creator --> const url = `https://legacy.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
-        const url = `https://creator.loquiz.com/games/edit/${game_id}/creator?task=${task.task_id}`;
-        console.log('📄 Open URL:', url);
-        await page.goto(url, { waitUntil: 'networkidle' });
-        //await takeScreenshot(page, `task_${i + 1}_loaded`);
 
-        // ✅ Wacht tot de nieuwe taakdialoog zichtbaar is
-        const taskDialog = page.locator('app-dialog-box').last();
-        await taskDialog.waitFor({ state: 'visible', timeout: 30000 });
-        console.log('✅ Taakdialoog geopend');
+        // =========================================================
+        // MEMORY FIX:
+        // Voor ELKE taak een volledig nieuwe BrowserContext + Page.
+        // Na de taak wordt de gehele context weer verwijderd.
+        // =========================================================
 
-        // 📝 Vul vraagtekst in (Loquiz label en antwoord)
-        if (task.content) {
-          const editor = taskDialog.locator(
-            'app-html-editor[formcontrolname="text"] .ql-editor[contenteditable="true"]'
+        let taskContext;
+
+        try {
+          taskContext = await browser.newContext({
+            storageState: storageState
+          });
+
+          const page = await taskContext.newPage();
+
+          console.log(`🔁 Taak ${i + 1}/${tasks.length}: ${task.task_id}`);
+          // DEPRICATED initial code --> const url = `https://creator.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
+          // DEPRICATED legacy creator --> const url = `https://legacy.loquiz.com/games/edit/${game_id}/questions?task=${task.task_id}`;
+          const url = `https://creator.loquiz.com/games/edit/${game_id}/creator?task=${task.task_id}`;
+          console.log('📄 Open URL:', url);
+          await page.goto(url, { waitUntil: 'networkidle' });
+          //await takeScreenshot(page, `task_${i + 1}_loaded`);
+
+          // ✅ Wacht tot de nieuwe taakdialoog zichtbaar is
+          const taskDialog = page.locator('app-dialog-box').last();
+          await taskDialog.waitFor({ state: 'visible', timeout: 30000 });
+          console.log('✅ Taakdialoog geopend');
+
+          // 📝 Vul vraagtekst in (Loquiz label en antwoord)
+          if (task.content) {
+            const editor = taskDialog.locator(
+              'app-html-editor[formcontrolname="text"] .ql-editor[contenteditable="true"]'
+            );
+            await editor.waitFor({ state: 'visible', timeout: 30000 });
+            const newText = decodeHtmlEntities(String(task.content));
+            await editor.fill(newText);
+            console.log('📝 Editor gevuld:', newText);
+          }
+
+          // Vul antwoorden
+          if (task.answers_same == 'Yes'){
+            await vulAntwoorden(page, {
+              option1: task.static_multiple_choice_answer_good,
+              option2: task.static_multiple_choice_answer_wrong1,
+              option3: task.static_multiple_choice_answer_wrong2,
+              option4: task.static_multiple_choice_answer_wrong3
+            });
+            console.log('✅ Statische antwoorden ingevuld voor allemaal zelfde antwoorden ');
+            //await takeScreenshot(page, `task_${i + 1}_editor_filled`);
+          } else {
+            await vulAntwoorden(page, {
+              option1: task.answer_good_name,
+              option2: task.answer_wrong1_name,
+              option3: task.answer_wrong2_name,
+              option4: task.answer_wrong3_name
+            });
+            console.log('✅ Antwoorden ingevuld');
+            //await takeScreenshot(page, `task_${i + 1}_editor_filled`);
+          }
+
+          // 💬 Voeg commentaar toe als aanwezig
+          if (task.comment && task.comment.trim() !== '') {
+            console.log('💬 Commentaar toevoegen');
+            const commentsButton = taskDialog.getByRole('tab', {
+              name: 'Comments',
+              exact: true
+            });
+            await commentsButton.click();
+            //await takeScreenshot(page, `task_${i + 1}_comments_tab`);
+
+            const commentEditor = taskDialog.locator(
+              'app-html-editor[formcontrolname="correctComment"] .ql-editor[contenteditable="true"]'
+            );
+            await commentEditor.waitFor({ state: 'visible', timeout: 10000 });
+            await commentEditor.fill(task.comment);
+            console.log('💬 Comment ingevuld:', task.comment);
+            //await takeScreenshot(page, `task_${i + 1}_comment_filled`);
+          }
+
+          // 💾 Klik op "Save as copy"
+          const saveCopyButton = taskDialog
+            .locator('app-dialog-box-footer')
+            .getByRole('button', {
+              name: 'Save as copy',
+              exact: true
+            });
+
+          await saveCopyButton.waitFor({ state: 'visible', timeout: 10000 });
+          await saveCopyButton.click();
+          console.log('💾 Save as copy geklikt');
+          //await takeScreenshot(page, `task_${i + 1}_save_copy`);
+
+          // ✅ Wacht op dialoogafsluiting
+          await taskDialog.waitFor({
+            state: 'hidden',
+            timeout: 30000
+          });
+
+          console.log('✅ Dialoog gesloten na Save as copy');
+
+          // ✅ Wacht tot de Creator na "Save as copy" weer volledig zichtbaar is
+          await page.locator('.navbar-end').waitFor({
+            state: 'visible',
+            timeout: 30000
+          });
+
+          // 🔍 Zoek de nieuwe "Save"-knop
+          const finalSaveButton = page.locator(
+            '.navbar-end button.btn-primary:has-text("Save")'
           );
-          await editor.waitFor({ state: 'visible', timeout: 30000 });
-          const newText = decodeHtmlEntities(String(task.content));
-          await editor.fill(newText);
-          console.log('📝 Editor gevuld:', newText);
-        }
 
-        // Vul antwoorden
-        if (task.answers_same == 'Yes'){
-          await vulAntwoorden(page, {
-            option1: task.static_multiple_choice_answer_good,
-            option2: task.static_multiple_choice_answer_wrong1,
-            option3: task.static_multiple_choice_answer_wrong2,
-            option4: task.static_multiple_choice_answer_wrong3
-          });
-          console.log('✅ Statische antwoorden ingevuld voor allemaal zelfde antwoorden ');
-          //await takeScreenshot(page, `task_${i + 1}_editor_filled`);
-        } else {
-          await vulAntwoorden(page, {
-            option1: task.answer_good_name,
-            option2: task.answer_wrong1_name,
-            option3: task.answer_wrong2_name,
-            option4: task.answer_wrong3_name
-          });
-          console.log('✅ Antwoorden ingevuld');
-          //await takeScreenshot(page, `task_${i + 1}_editor_filled`);
-        }
-
-        // 💬 Voeg commentaar toe als aanwezig
-        if (task.comment && task.comment.trim() !== '') {
-          console.log('💬 Commentaar toevoegen');
-          const commentsButton = taskDialog.getByRole('tab', {
-            name: 'Comments',
-            exact: true
-          });
-          await commentsButton.click();
-          //await takeScreenshot(page, `task_${i + 1}_comments_tab`);
-
-          const commentEditor = taskDialog.locator(
-            'app-html-editor[formcontrolname="correctComment"] .ql-editor[contenteditable="true"]'
-          );
-          await commentEditor.waitFor({ state: 'visible', timeout: 10000 });
-          await commentEditor.fill(task.comment);
-          console.log('💬 Comment ingevuld:', task.comment);
-          //await takeScreenshot(page, `task_${i + 1}_comment_filled`);
-        }
-
-        // 💾 Klik op "Save as copy"
-        const saveCopyButton = taskDialog
-          .locator('app-dialog-box-footer')
-          .getByRole('button', {
-            name: 'Save as copy',
-            exact: true
+          await finalSaveButton.waitFor({
+            state: 'visible',
+            timeout: 30000
           });
 
-        await saveCopyButton.waitFor({ state: 'visible', timeout: 10000 });
-        await saveCopyButton.click();
-        console.log('💾 Save as copy geklikt');
-        //await takeScreenshot(page, `task_${i + 1}_save_copy`);
+          // ✅ Wacht totdat de Save-knop daadwerkelijk klikbaar is
+          await page.waitForFunction(() => {
+            const button = [...document.querySelectorAll('.navbar-end button.btn-primary')]
+              .find(btn => btn.textContent.trim() === 'Save');
 
-        // ✅ Wacht op dialoogafsluiting
-        await taskDialog.waitFor({
-          state: 'hidden',
-          timeout: 30000
-        });
+            return button && !button.disabled;
+          }, null, { timeout: 30000 });
 
-        console.log('✅ Dialoog gesloten na Save as copy');
+          console.log('💾 Eind-saveknop is beschikbaar');
 
-        // ✅ Wacht tot de Creator na "Save as copy" weer volledig zichtbaar is
-        await page.locator('.navbar-end').waitFor({
-          state: 'visible',
-          timeout: 30000
-        });
+          await finalSaveButton.click();
 
-        // 🔍 Zoek de nieuwe "Save"-knop
-        const finalSaveButton = page.locator(
-          '.navbar-end button.btn-primary:has-text("Save")'
-        );
+          console.log('✅ Eind-save uitgevoerd');
+          //await takeScreenshot(page, `task_${i + 1}_final_save`);
 
-        await finalSaveButton.waitFor({
-          state: 'visible',
-          timeout: 30000
-        });
+          // ✅ Wacht op bevestiging dat Loquiz klaar is met opslaan.
+          // Na succesvolle save wordt de knop disabled.
+          await page.waitForFunction(() => {
+            const button = [...document.querySelectorAll('.navbar-end button.btn-primary')]
+              .find(btn => btn.textContent.trim() === 'Save');
 
-        // ✅ Wacht totdat de Save-knop daadwerkelijk klikbaar is
-        await page.waitForFunction(() => {
-          const button = [...document.querySelectorAll('.navbar-end button.btn-primary')]
-            .find(btn => btn.textContent.trim() === 'Save');
+            return button && button.disabled;
+          }, null, { timeout: 30000 });
 
-          return button && !button.disabled;
-        }, null, { timeout: 30000 });
+          console.log('✅ Save bevestigd door Loquiz');
 
-        console.log('💾 Eind-saveknop is beschikbaar');
+        } finally {
+          // =========================================================
+          // MEMORY FIX:
+          // Volledige context sluiten zodat Chromium alle resources,
+          // DOM, Angular-state en renderer-memory van deze taak vrijgeeft.
+          // =========================================================
 
-        await finalSaveButton.click();
-
-        console.log('✅ Eind-save uitgevoerd');
-        //await takeScreenshot(page, `task_${i + 1}_final_save`);
-
-        // ✅ Wacht op bevestiging dat Loquiz klaar is met opslaan.
-        // Na succesvolle save wordt de knop disabled.
-        await page.waitForFunction(() => {
-          const button = [...document.querySelectorAll('.navbar-end button.btn-primary')]
-            .find(btn => btn.textContent.trim() === 'Save');
-
-          return button && button.disabled;
-        }, null, { timeout: 30000 });
-
-        console.log('✅ Save bevestigd door Loquiz');
-      }
-
-      // ✅ Alle tasks verwerkt — nu placeholder-check doen vóór WP-callback
-      try {
-        const { ok, found } = await checkResultsPlaceholders(page, game_id);
-      
-        if (!ok) {
-          console.warn('⚠️ Placeholder-check FAALT. Niet-vervangen placeholders gevonden.');
-      
-          // simpele HTML-escape voor de mail
-          const esc = (s) => String(s).replace(/[&<>]/g, (c) => (
-            { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]
-          ));
-      
-          const subject = `⚠️ Warning: Loquiz game ${game_id} niet goed geconfigureerd!`;
-          const itemsHtml = found.map(f => (
-            `<li style="margin-bottom:10px">
-               <code>${esc(f.placeholder)}</code>
-               <div style="font-family:monospace;background:#f6f8fa;padding:10px;border-radius:6px;white-space:nowrap;overflow:auto">
-                 ${esc(f.context)}
-               </div>
-             </li>`
-          )).join('');
-      
-          const html = `
-            <p>Na het verwerken van de taken zijn er nog placeholders aangetroffen op
-            <a href="https://results.loquiz.com/${game_id}/answers" target="_blank" rel="noreferrer">results.loquiz.com/${game_id}/answers</a>:</p>
-            <ul>${itemsHtml}</ul>
-            <p>Graag controleren en opnieuw draaien.</p>
-          `;
-      
-          await sendWarningViaBrevoAPI({ subject, html });
-      
-          // ❌ Bij failure géén WP-callback sturen
-          console.warn('⏹ WP-callback overgeslagen vanwege placeholder-fouten.');
-        } else {
-          console.log('✅ Placeholder-check OK — alle placeholders zijn vervangen.');
-      
-          // 🔁 Terugkoppeling naar WordPress
-          console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
-          console.log('➡️ Payload:', JSON.stringify({ entry_id }));
-      
-          const callbackResponse = await fetch(webhook_url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ entry_id })
-          });
-      
-          const text = await callbackResponse.text();
-          console.log(`✅ WordPress response (${callbackResponse.status}):`, text);
-      
-          if (!callbackResponse.ok) {
-            throw new Error(`❌ WP callback mislukt met status ${callbackResponse.status}`);
+          if (taskContext) {
+            await taskContext.close();
+            console.log(`🧹 Browsercontext taak ${i + 1} gesloten`);
           }
         }
-      } catch (e) {
-        console.error('❌ Fout tijdens placeholder-check / e-mail:', e);
-        // Optioneel: hier kun je alsnog een WP-callback proberen of extra logging doen.
+      }
+
+      // =========================================================
+      // Voor de resultaatcontrole gebruiken we opnieuw een
+      // aparte tijdelijke context.
+      // =========================================================
+
+      let resultsContext;
+
+      try {
+        resultsContext = await browser.newContext({
+          storageState: storageState
+        });
+
+        const page = await resultsContext.newPage();
+
+        // ✅ Alle tasks verwerkt — nu placeholder-check doen vóór WP-callback
+        try {
+          const { ok, found } = await checkResultsPlaceholders(page, game_id);
+        
+          if (!ok) {
+            console.warn('⚠️ Placeholder-check FAALT. Niet-vervangen placeholders gevonden.');
+        
+            // simpele HTML-escape voor de mail
+            const esc = (s) => String(s).replace(/[&<>]/g, (c) => (
+              { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]
+            ));
+        
+            const subject = `⚠️ Warning: Loquiz game ${game_id} niet goed geconfigureerd!`;
+            const itemsHtml = found.map(f => (
+              `<li style="margin-bottom:10px">
+                 <code>${esc(f.placeholder)}</code>
+                 <div style="font-family:monospace;background:#f6f8fa;padding:10px;border-radius:6px;white-space:nowrap;overflow:auto">
+                   ${esc(f.context)}
+                 </div>
+               </li>`
+            )).join('');
+        
+            const html = `
+              <p>Na het verwerken van de taken zijn er nog placeholders aangetroffen op
+              <a href="https://results.loquiz.com/${game_id}/answers" target="_blank" rel="noreferrer">results.loquiz.com/${game_id}/answers</a>:</p>
+              <ul>${itemsHtml}</ul>
+              <p>Graag controleren en opnieuw draaien.</p>
+            `;
+        
+            await sendWarningViaBrevoAPI({ subject, html });
+        
+            // ❌ Bij failure géén WP-callback sturen
+            console.warn('⏹ WP-callback overgeslagen vanwege placeholder-fouten.');
+          } else {
+            console.log('✅ Placeholder-check OK — alle placeholders zijn vervangen.');
+        
+            // 🔁 Terugkoppeling naar WordPress
+            console.log('➡️ Callback wordt verstuurd naar:', webhook_url);
+            console.log('➡️ Payload:', JSON.stringify({ entry_id }));
+        
+            const callbackResponse = await fetch(webhook_url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ entry_id })
+            });
+        
+            const text = await callbackResponse.text();
+            console.log(`✅ WordPress response (${callbackResponse.status}):`, text);
+        
+            if (!callbackResponse.ok) {
+              throw new Error(`❌ WP callback mislukt met status ${callbackResponse.status}`);
+            }
+          }
+        } catch (e) {
+          console.error('❌ Fout tijdens placeholder-check / e-mail:', e);
+          // Optioneel: hier kun je alsnog een WP-callback proberen of extra logging doen.
+        }
+
+      } finally {
+        if (resultsContext) {
+          await resultsContext.close();
+          console.log('🧹 Resultaten-context gesloten');
+        }
       }
 
       } catch (err) {
